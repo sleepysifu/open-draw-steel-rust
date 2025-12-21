@@ -12,7 +12,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
-    use crate::{combat::{BattleParameters, BattleState, TurnSide}, dice::roll, npc::NPC, pc::PC};
+    use crate::{combat::{BattleParameters, BattleState, TurnSide}, dice::rolld10s, npc::NPC, pc::PC};
 
     #[test]
     fn test_battle_flow() {
@@ -26,7 +26,7 @@ mod tests {
         npcs.insert(NPC::new("NPC2".to_string()));
         npcs.insert(NPC::new("NPC3".to_string()));
     
-        let starting_roll = roll(0,1,0);
+        let starting_roll:i32 = rolld10s(1).iter().sum();
         let starting_side = if starting_roll > 5 {
             TurnSide::PC
         } else {

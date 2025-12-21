@@ -5,7 +5,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use crystal_heart::{BattleParameters, BattleState, NPC, PC, TurnSide, roll};
+use crystal_heart::{BattleParameters, BattleState, NPC, PC, TurnSide, rolld10s};
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
@@ -179,7 +179,7 @@ fn create_battle(app: &mut App) {
         return;
     }
 
-    let starting_roll = roll(0, 1, 0);
+    let starting_roll:i32 = rolld10s(1).iter().sum();
     let starting_side = if starting_roll > 5 {
         TurnSide::PC
     } else {
