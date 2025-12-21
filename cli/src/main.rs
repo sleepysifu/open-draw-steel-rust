@@ -117,6 +117,32 @@ fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
                 app.message = "Round completed!".to_string();
             }
         }
+        KeyCode::Char('e') => {
+            if let Some(ref state) = app.battle_state {
+                match state.end_turn() {
+                    Ok(new_state) => {
+                        app.battle_state = Some(new_state);
+                        app.message = "Turn ended".to_string();
+                    }
+                    Err(e) => {
+                        app.message = format!("Error: {}", e);
+                    }
+                }
+            }
+        }
+        KeyCode::Char('c') => {
+            if let Some(ref state) = app.battle_state {
+                match state.cancel_turn() {
+                    Ok(new_state) => {
+                        app.battle_state = Some(new_state);
+                        app.message = "Turn cancelled".to_string();
+                    }
+                    Err(e) => {
+                        app.message = format!("Error: {}", e);
+                    }
+                }
+            }
+        }
         KeyCode::Char(c) => {
             if let Some(ref state) = app.battle_state {
                 // Check if it's a digit (1-9)
@@ -127,10 +153,10 @@ fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
                     if index < available.len() {
                         let entity = &available[index];
                         let side = state.current_side();
-                        match state.take_turn(side, entity.clone()) {
+                        match state.start_turn(side, entity.clone()) {
                             Ok(new_state) => {
                                 app.battle_state = Some(new_state);
-                                app.message = format!("{} took their turn!", entity);
+                                app.message = format!("{} started their turn", entity);
                             }
                             Err(e) => {
                                 app.message = format!("Error: {}", e);
@@ -227,6 +253,7 @@ fn render_battle_state(state: &BattleState) -> Paragraph<'static> {
     let all_npcs = state.all_npcs();
     let pc_taken = state.pc_taken_turns();
     let npc_taken = state.npc_taken_turns();
+    let current_turn = state.current_turn();
 
     let mut text = vec![
         Line::from(vec![
@@ -243,18 +270,44 @@ fn render_battle_state(state: &BattleState) -> Paragraph<'static> {
                 Style::default().fg(Color::Cyan),
             ),
         ]),
-        Line::from(""),
-        Line::from(Span::styled(
-            "PCs:",
-            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
-        )),
     ];
+
+    // Show current turn in progress
+    if let Some((side, name)) = current_turn {
+        text.push(Line::from(vec![
+            Span::styled("Turn in progress: ", Style::default().fg(Color::White)),
+            Span::styled(
+                format!("{} ({:?})", name, side),
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            ),
+        ]));
+    }
+    else {
+        text.push(Line::from(Span::styled(
+            "Select a character to start their turn",
+            Style::default().fg(Color::White),
+        )));
+    }
+
+    text.push(Line::from(""));
+    text.push(Line::from(Span::styled(
+        "PCs:",
+        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+    )));
 
     // Display all PCs with their status
     let mut pc_vec: Vec<&String> = all_pcs.iter().collect();
     pc_vec.sort();
     for pc in pc_vec {
-        let style  = if pc_taken.contains(pc) {
+        let style = if let Some((TurnSide::PC, name)) = current_turn {
+            if name == pc {
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else if pc_taken.contains(pc) {
+                Style::default().fg(Color::DarkGray)
+            } else {
+                Style::default().fg(Color::White)
+            }
+        } else if pc_taken.contains(pc) {
             Style::default().fg(Color::DarkGray)
         } else {
             Style::default().fg(Color::White)
@@ -274,7 +327,15 @@ fn render_battle_state(state: &BattleState) -> Paragraph<'static> {
     let mut npc_vec: Vec<&String> = all_npcs.iter().collect();
     npc_vec.sort();
     for npc in npc_vec {
-        let style  = if npc_taken.contains(npc) {
+        let style = if let Some((TurnSide::NPC, name)) = current_turn {
+            if name == npc {
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else if npc_taken.contains(npc) {
+                Style::default().fg(Color::DarkGray)
+            } else {
+                Style::default().fg(Color::White)
+            }
+        } else if npc_taken.contains(npc) {
             Style::default().fg(Color::DarkGray)
         } else {
             Style::default().fg(Color::White)
@@ -285,10 +346,21 @@ fn render_battle_state(state: &BattleState) -> Paragraph<'static> {
     }
 
     text.push(Line::from(""));
-    text.push(Line::from(Span::styled(
-        "Press a number (1-9) to take a turn for that entity",
-        Style::default().fg(Color::Gray),
-    )));
+    if current_turn.is_some() {
+        text.push(Line::from(Span::styled(
+            "Press 'e' to end the current turn",
+            Style::default().fg(Color::Yellow),
+        )));
+        text.push(Line::from(Span::styled(
+            "Press 'c' to cancel the current turn",
+            Style::default().fg(Color::Yellow),
+        )));
+    } else {
+        text.push(Line::from(Span::styled(
+            "Press a number (1-9) to start a turn for that entity",
+            Style::default().fg(Color::Gray),
+        )));
+    }
     text.push(Line::from(Span::styled(
         "Press 'r' to complete the round",
         Style::default().fg(Color::Gray),
@@ -387,7 +459,9 @@ fn render_instructions() -> Paragraph<'static> {
             Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
-        Line::from("• Press a number (1-9) to take a turn"),
+        Line::from("• Press a number (1-9) to start a turn"),
+        Line::from("• Press 'e' to end the current turn"),
+        Line::from("• Press 'c' to cancel the current turn"),
         Line::from("• Press 'r' to complete round"),
         Line::from("• Press 'q' to quit"),
     ];
