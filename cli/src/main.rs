@@ -223,8 +223,12 @@ fn ui(f: &mut Frame, app: &App) {
 fn render_battle_state(state: &BattleState) -> Paragraph<'static> {
     let current_side = state.current_side();
     let round = state.round();
-    
-    let text = vec![
+    let all_pcs = state.all_pcs();
+    let all_npcs = state.all_npcs();
+    let pc_taken = state.pc_taken_turns();
+    let npc_taken = state.npc_taken_turns();
+
+    let mut text = vec![
         Line::from(vec![
             Span::styled("Current Side: ", Style::default().fg(Color::White)),
             Span::styled(
@@ -241,14 +245,54 @@ fn render_battle_state(state: &BattleState) -> Paragraph<'static> {
         ]),
         Line::from(""),
         Line::from(Span::styled(
-            "Press a number (1-9) to take a turn for that entity",
-            Style::default().fg(Color::Gray),
-        )),
-        Line::from(Span::styled(
-            "Press 'r' to complete the round",
-            Style::default().fg(Color::Gray),
+            "PCs:",
+            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
         )),
     ];
+
+    // Display all PCs with their status
+    let mut pc_vec: Vec<&String> = all_pcs.iter().collect();
+    pc_vec.sort();
+    for pc in pc_vec {
+        let style  = if pc_taken.contains(pc) {
+            Style::default().fg(Color::DarkGray)
+        } else {
+            Style::default().fg(Color::White)
+        };
+        text.push(Line::from(
+            Span::styled(format!("  • {}", pc), style),
+        ));
+    }
+
+    text.push(Line::from(""));
+    text.push(Line::from(Span::styled(
+        "NPCs:",
+        Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+    )));
+
+    // Display all NPCs with their status
+    let mut npc_vec: Vec<&String> = all_npcs.iter().collect();
+    npc_vec.sort();
+    for npc in npc_vec {
+        let style  = if npc_taken.contains(npc) {
+            Style::default().fg(Color::DarkGray)
+        } else {
+            Style::default().fg(Color::White)
+        };
+        text.push(Line::from(
+            Span::styled(format!("  • {}", npc), style),
+        ));
+    }
+
+    text.push(Line::from(""));
+    text.push(Line::from(Span::styled(
+        "Press a number (1-9) to take a turn for that entity",
+        Style::default().fg(Color::Gray),
+    )));
+    text.push(Line::from(Span::styled(
+        "Press 'r' to complete the round",
+        Style::default().fg(Color::Gray),
+    )));
 
     Paragraph::new(text)
         .block(Block::default().borders(Borders::ALL).title("Battle State"))

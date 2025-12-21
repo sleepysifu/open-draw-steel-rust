@@ -17,6 +17,7 @@ pub struct BattleParameters {
     starting_side: TurnSide,
 }
 
+#[allow(dead_code)]
 impl BattleParameters {
     pub fn new(pcs: HashSet<String>, npcs: HashSet<String>, starting_side: TurnSide) -> Self {
         Self {
@@ -55,6 +56,7 @@ pub struct BattleState {
     round:i16,
 }
 
+#[allow(dead_code)]
 impl BattleState {
     pub fn new(parameters:BattleParameters) -> Self {
         Self {
@@ -72,6 +74,22 @@ impl BattleState {
 
     pub fn round(&self) -> i16 {
         self.round
+    }
+
+    pub fn all_pcs(&self) -> &HashSet<String> {
+        self.starting_parameters.pcs()
+    }
+
+    pub fn all_npcs(&self) -> &HashSet<String> {
+        self.starting_parameters.npcs()
+    }
+
+    pub fn pc_taken_turns(&self) -> &HashSet<String> {
+        &self.pc_taken_turns
+    }
+
+    pub fn npc_taken_turns(&self) -> &HashSet<String> {
+        &self.npc_taken_turns
     }
 
     pub fn available(&self) -> HashSet<String> {
