@@ -1,5 +1,6 @@
 [workspace]
 members = ["engine", "cli"]
+resolver = "3"
 
 [workspace.dependencies]
 rand = "0.8"

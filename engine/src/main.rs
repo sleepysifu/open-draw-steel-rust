@@ -1,10 +1,10 @@
-mod battle;
+mod combat;
 mod dice;
 mod npc;
 mod pc;
 
 use std::collections::HashSet;
-use crate::{battle::{BattleParameters, BattleState, TurnSide}, dice::roll, npc::NPC, pc::PC};
+use crate::{combat::{BattleParameters, BattleState, TurnSide}, dice::roll, npc::NPC, pc::PC};
 fn main() {
 
     let mut pcs: HashSet<PC> = HashSet::new();

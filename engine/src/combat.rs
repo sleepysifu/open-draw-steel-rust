@@ -114,7 +114,7 @@ impl BattleState {
         }
         
         // Create new state with updated values
-        let (pc_taken_turns, npc_taken_turns, next_side) = match side {
+        let (pc_taken_turns, npc_taken_turns, mut next_side) = match side {
             TurnSide::PC => {
                 let mut new_pc_turns = self.pc_taken_turns.clone();
                 new_pc_turns.insert(entity_name);
@@ -126,6 +126,27 @@ impl BattleState {
                 (self.pc_taken_turns.clone(), new_npc_turns, TurnSide::PC)
             }
         };
+
+        // check the remaining turns on the next side. if there are none, remain on the current side.
+        let remaining_next_turns = match next_side {
+            TurnSide::PC => {
+                // Check how many PCs haven't taken their turn yet
+                self.starting_parameters.pcs()
+                    .difference(&pc_taken_turns)
+                    .count()
+            }
+            TurnSide::NPC => {
+                // Check how many NPCs haven't taken their turn yet
+                self.starting_parameters.npcs()
+                    .difference(&npc_taken_turns)
+                    .count()
+            }
+        };
+
+        //stay on current side
+        if remaining_next_turns == 0 {
+            next_side = side;
+        }
         
         Ok(Self {
             starting_parameters: self.starting_parameters.clone(),

@@ -119,25 +119,26 @@ fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
         }
         KeyCode::Char(c) => {
             if let Some(ref state) = app.battle_state {
-                let available = state.available();
-                
-                // Try to find matching entity (case-insensitive first char)
-                let matching_entity = available.iter()
-                    .find(|name| name.chars().next().map(|ch| ch.to_ascii_lowercase()) == Some(c.to_ascii_lowercase()));
-                
-                if let Some(entity) = matching_entity {
-                    let side = state.current_side();
-                    match state.take_turn(side, entity.clone()) {
-                        Ok(new_state) => {
-                            app.battle_state = Some(new_state);
-                            app.message = format!("{} took their turn!", entity);
+                // Check if it's a digit (1-9)
+                if let Some(digit) = c.to_digit(10) {
+                    let available: Vec<String> = state.available().into_iter().collect();
+                    let index = (digit as usize).saturating_sub(1); // Convert 1-9 to 0-8
+                    
+                    if index < available.len() {
+                        let entity = &available[index];
+                        let side = state.current_side();
+                        match state.take_turn(side, entity.clone()) {
+                            Ok(new_state) => {
+                                app.battle_state = Some(new_state);
+                                app.message = format!("{} took their turn!", entity);
+                            }
+                            Err(e) => {
+                                app.message = format!("Error: {}", e);
+                            }
                         }
-                        Err(e) => {
-                            app.message = format!("Error: {}", e);
-                        }
+                    } else {
+                        app.message = format!("No entity at position {}", digit);
                     }
-                } else {
-                    app.message = format!("No available entity starting with '{}'", c);
                 }
             }
         }
@@ -240,7 +241,7 @@ fn render_battle_state(state: &BattleState) -> Paragraph<'static> {
         ]),
         Line::from(""),
         Line::from(Span::styled(
-            "Press a letter to take a turn for that entity",
+            "Press a number (1-9) to take a turn for that entity",
             Style::default().fg(Color::Gray),
         )),
         Line::from(Span::styled(
@@ -281,11 +282,11 @@ fn render_available_entities(state: &BattleState) -> Paragraph<'static> {
         Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
     ))];
 
-    for entity in available.iter() {
-        let first_char = entity.chars().next().unwrap_or('?');
+    for (idx, entity) in available.iter().enumerate() {
+        let number = idx + 1; // Display 1-based numbers
         items.push(Line::from(vec![
             Span::styled(
-                format!("[{}] ", first_char),
+                format!("[{}] ", number),
                 Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
             ),
             Span::styled(entity.clone(), Style::default().fg(Color::White)),
@@ -342,7 +343,7 @@ fn render_instructions() -> Paragraph<'static> {
             Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
-        Line::from("• Press a letter to take a turn"),
+        Line::from("• Press a number (1-9) to take a turn"),
         Line::from("• Press 'r' to complete round"),
         Line::from("• Press 'q' to quit"),
     ];
