@@ -1,0 +1,5 @@
+[workspace]
+members = ["engine", "cli"]
+
+[workspace.dependencies]
+rand = "0.8"
