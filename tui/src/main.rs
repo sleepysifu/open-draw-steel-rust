@@ -14,7 +14,6 @@ use ratatui::{
 };
 use app::{App, InputMode};
 use handlers::{handle_creation_input, handle_turn_input, handle_text_input, handle_removal_input};
-use ui::ui;
 
 fn main() -> io::Result<()> {
     // Setup terminal
@@ -28,7 +27,7 @@ fn main() -> io::Result<()> {
     let mut should_quit = false;
 
     while !should_quit {
-        terminal.draw(|f| ui(f, &app))?;
+        terminal.draw(|f| ui::render_ui(f, &app))?;
 
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {

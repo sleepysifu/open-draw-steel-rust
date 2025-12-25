@@ -64,7 +64,7 @@ impl BattleParameters {
 }
 
 #[derive(Debug, Clone)]
-pub struct BattleState {
+pub struct CombatState {
     starting_parameters:BattleParameters,
     current_side: TurnSide,
     current_turn: Option<(TurnSide, String)>, // The entity currently taking their turn
@@ -73,7 +73,7 @@ pub struct BattleState {
     round:i16,
 }
 
-impl BattleState {
+impl CombatState {
     pub fn new(parameters:BattleParameters) -> Self {
         Self {
             pc_taken_turns: HashSet::with_capacity(parameters.pcs.len()),
@@ -400,7 +400,7 @@ impl BattleState {
 mod tests {
     use super::*;
 
-    fn create_test_battle(pc_count: usize, npc_count: usize, starting_side: TurnSide) -> BattleState {
+    fn create_test_battle(pc_count: usize, npc_count: usize, starting_side: TurnSide) -> CombatState {
         let pcs: HashSet<String> = (0..pc_count)
             .map(|i| format!("PC{}", i + 1))
             .collect();
@@ -409,7 +409,7 @@ mod tests {
             .collect();
         
         let params = BattleParameters::new(pcs, npcs, starting_side);
-        BattleState::new(params)
+        CombatState::new(params)
     }
 
     #[test]

@@ -3,7 +3,7 @@ pub mod dice;
 pub mod npc;
 pub mod pc;
 
-pub use combat::{BattleParameters, BattleState, TurnSide};
+pub use combat::{BattleParameters, CombatState, TurnSide};
 pub use dice::{rolld3s, rolld10s, power_roll};
 pub use npc::NPC;
 pub use pc::PC;
@@ -11,7 +11,7 @@ pub use pc::PC;
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
-    use crate::{combat::{BattleParameters, BattleState, TurnSide}, dice::rolld10s, npc::NPC, pc::PC};
+    use crate::{combat::{BattleParameters, CombatState, TurnSide}, dice::rolld10s, npc::NPC, pc::PC};
 
     #[test]
     fn test_battle_flow() {
@@ -38,7 +38,7 @@ mod tests {
             starting_side,
         );
         
-        let battle = BattleState::new(battle_parameters);
+        let battle = CombatState::new(battle_parameters);
         println!("Battle started: {:?}", battle);
         
         // Start PC1's turn

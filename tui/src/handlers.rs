@@ -1,5 +1,5 @@
 use crossterm::event::KeyCode;
-use odsr_engine::{BattleParameters, BattleState, TurnSide};
+use odsr_engine::{BattleParameters, CombatState, TurnSide};
 use odsr_engine::dice::rolld10s;
 use crate::app::{App, BattleMode, InputMode, TextInput, TextInputType};
 
@@ -271,7 +271,7 @@ pub fn create_battle(app: &mut App) {
         starting_side,
     );
 
-    app.state = Some(BattleMode::Active(BattleState::new(battle_parameters)));
+    app.state = Some(BattleMode::Active(CombatState::new(battle_parameters)));
     app.input_mode = InputMode::TakingTurn;
     app.message = format!(
         "Battle created! Starting side: {:?} (rolled {})",

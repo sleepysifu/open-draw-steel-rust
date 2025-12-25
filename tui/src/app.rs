@@ -1,8 +1,8 @@
-use odsr_engine::{BattleParameters, BattleState, TurnSide};
+use odsr_engine::{BattleParameters, CombatState, TurnSide};
 
 pub enum BattleMode {
     Setup(BattleParameters),
-    Active(BattleState),
+    Active(CombatState),
 }
 
 pub struct App {
