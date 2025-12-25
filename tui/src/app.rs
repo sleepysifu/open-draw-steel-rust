@@ -16,6 +16,7 @@ pub enum InputMode {
     CreatingBattle,
     TakingTurn,
     TextInput,
+    RemovingEntity,
 }
 
 pub enum TextInputType {

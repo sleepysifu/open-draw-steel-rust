@@ -13,7 +13,7 @@ use ratatui::{
     Terminal,
 };
 use app::{App, InputMode};
-use handlers::{handle_creation_input, handle_turn_input, handle_text_input};
+use handlers::{handle_creation_input, handle_turn_input, handle_text_input, handle_removal_input};
 use ui::ui;
 
 fn main() -> io::Result<()> {
@@ -41,6 +41,9 @@ fn main() -> io::Result<()> {
                     }
                     InputMode::TextInput => {
                         should_quit = handle_text_input(&mut app, key.code);
+                    }
+                    InputMode::RemovingEntity => {
+                        should_quit = handle_removal_input(&mut app, key.code);
                     }
                 }
             }

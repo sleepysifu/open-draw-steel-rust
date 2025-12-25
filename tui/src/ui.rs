@@ -42,10 +42,24 @@ pub fn ui(f: &mut Frame, app: &App) {
     };
     f.render_widget(left_content, main_chunks[0]);
 
-    // Right side: Available entities or instructions
-    let right_content = match app.state {
-        Some(BattleMode::Active(ref state)) => render_available_entities(state),
-        _ => render_instructions(),
+    // Right side: Available entities, all entities (for removal), abilities (during turn), or instructions
+    let right_content = match (&app.state, &app.input_mode) {
+        (Some(BattleMode::Active(state)), crate::app::InputMode::RemovingEntity) => {
+            render_all_entities(state)
+        }
+        (Some(BattleMode::Active(state)), _) => {
+            // If a turn is in progress, show abilities; otherwise show available entities
+            if state.current_turn().is_some() {
+                render_abilities(state)
+            } else {
+                render_available_entities(state)
+            }
+        }
+        (Some(BattleMode::Setup(params)), crate::app::InputMode::RemovingEntity) => {
+            render_all_entities_setup(params)
+        }
+        (Some(BattleMode::Setup(_)), _) => render_instructions_setup(),
+        _ => render_instructions_battle(),
     };
     f.render_widget(right_content, main_chunks[1]);
 
@@ -182,10 +196,7 @@ pub fn render_battle_state(state: &BattleState) -> Paragraph<'static> {
             Style::default().fg(Color::Gray),
         )));
     }
-    text.push(Line::from(Span::styled(
-        "Press 'r' to complete the round",
-        Style::default().fg(Color::Gray),
-    )));
+    
 
     Paragraph::new(text)
         .block(Block::default().borders(Borders::ALL).title("Battle State"))
@@ -233,6 +244,164 @@ pub fn render_available_entities(state: &BattleState) -> Paragraph<'static> {
 
     Paragraph::new(items)
         .block(Block::default().borders(Borders::ALL).title("Available Entities"))
+        .wrap(Wrap { trim: true })
+}
+
+pub fn render_abilities(state: &BattleState) -> Paragraph<'static> {
+    let current_turn = state.current_turn();
+    
+    if let Some((_side, entity_name)) = current_turn {
+        let text = vec![
+            Line::from(Span::styled(
+                format!("{}'s Abilities", entity_name),
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            )),
+            Line::from(""),
+            Line::from(Span::styled(
+                "(Abilities will be displayed here)",
+                Style::default().fg(Color::DarkGray),
+            )),
+        ];
+        
+        Paragraph::new(text)
+            .block(Block::default().borders(Borders::ALL).title("Abilities"))
+            .wrap(Wrap { trim: true })
+    } else {
+        // Fallback (shouldn't happen, but just in case)
+        render_available_entities(state)
+    }
+}
+
+pub fn render_all_entities(state: &BattleState) -> Paragraph<'static> {
+    let all_pcs = state.all_pcs();
+    let all_npcs = state.all_npcs();
+    let current_turn = state.current_turn();
+    
+    let mut items: Vec<Line> = vec![Line::from(Span::styled(
+        "Select entity to remove:",
+        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+    ))];
+    
+    items.push(Line::from(""));
+    items.push(Line::from(Span::styled(
+        "PCs:",
+        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+    )));
+    
+    let mut entity_index = 0;
+    let pc_vec: Vec<&String> = all_pcs.iter().collect();
+    for pc in &pc_vec {
+        entity_index += 1;
+        let style = if let Some((TurnSide::PC, name)) = current_turn {
+            if name == *pc {
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::White)
+            }
+        } else {
+            Style::default().fg(Color::White)
+        };
+        items.push(Line::from(vec![
+            Span::styled(
+                format!("[{}] ", entity_index),
+                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled((*pc).clone(), style),
+        ]));
+    }
+    
+    items.push(Line::from(""));
+    items.push(Line::from(Span::styled(
+        "NPCs:",
+        Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+    )));
+    
+    let npc_vec: Vec<&String> = all_npcs.iter().collect();
+    for npc in &npc_vec {
+        entity_index += 1;
+        let style = if let Some((TurnSide::NPC, name)) = current_turn {
+            if name == *npc {
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::White)
+            }
+        } else {
+            Style::default().fg(Color::White)
+        };
+        items.push(Line::from(vec![
+            Span::styled(
+                format!("[{}] ", entity_index),
+                Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled((*npc).clone(), style),
+        ]));
+    }
+    
+    items.push(Line::from(""));
+    items.push(Line::from(Span::styled(
+        "Press 'x' to cancel",
+        Style::default().fg(Color::Yellow),
+    )));
+    
+    Paragraph::new(items)
+        .block(Block::default().borders(Borders::ALL).title("Remove Entity"))
+        .wrap(Wrap { trim: true })
+}
+
+pub fn render_all_entities_setup(params: &BattleParameters) -> Paragraph<'static> {
+    let all_pcs = params.pcs();
+    let all_npcs = params.npcs();
+    
+    let mut items: Vec<Line> = vec![Line::from(Span::styled(
+        "Select entity to remove:",
+        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+    ))];
+    
+    items.push(Line::from(""));
+    items.push(Line::from(Span::styled(
+        "PCs:",
+        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+    )));
+    
+    let mut entity_index = 0;
+    let pc_vec: Vec<&String> = all_pcs.iter().collect();
+    for pc in &pc_vec {
+        entity_index += 1;
+        items.push(Line::from(vec![
+            Span::styled(
+                format!("[{}] ", entity_index),
+                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled((*pc).clone(), Style::default().fg(Color::White)),
+        ]));
+    }
+    
+    items.push(Line::from(""));
+    items.push(Line::from(Span::styled(
+        "NPCs:",
+        Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+    )));
+    
+    let npc_vec: Vec<&String> = all_npcs.iter().collect();
+    for npc in &npc_vec {
+        entity_index += 1;
+        items.push(Line::from(vec![
+            Span::styled(
+                format!("[{}] ", entity_index),
+                Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled((*npc).clone(), Style::default().fg(Color::White)),
+        ]));
+    }
+    
+    items.push(Line::from(""));
+    items.push(Line::from(Span::styled(
+        "Press 'x' to cancel",
+        Style::default().fg(Color::Yellow),
+    )));
+    
+    Paragraph::new(items)
+        .block(Block::default().borders(Borders::ALL).title("Remove Entity"))
         .wrap(Wrap { trim: true })
 }
 
@@ -287,36 +456,56 @@ pub fn render_creation_ui(_app: &App, params: &BattleParameters) -> Paragraph<'s
         }
     }
     
-    text.push(Line::from(""));
-    text.push(Line::from(Span::styled(
-        "Press 'p' to add a PC",
-        Style::default().fg(Color::Yellow),
-    )));
-    text.push(Line::from(Span::styled(
-        "Press 'b' to add an NPC",
-        Style::default().fg(Color::Yellow),
-    )));
-    text.push(Line::from(Span::styled(
-        "Press 'n' to start battle",
-        Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
-    )));
-
+    
     Paragraph::new(text)
         .block(Block::default().borders(Borders::ALL).title("Battle Setup"))
         .wrap(Wrap { trim: true })
 }
 
-pub fn render_instructions() -> Paragraph<'static> {
+pub fn render_instructions_setup() -> Paragraph<'static> {
     let text = vec![
         Line::from(Span::styled(
-            "Instructions",
+            "Setup Instructions",
             Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
+        Line::from("• Press 'p' to add a PC"),
+        Line::from("• Press 'b' to add an NPC"),
+        Line::from("• Press 'x' to remove an PC or NPC"),
+        Line::from("• Press 'n' to start battle"),
+        Line::from(""),
+        Line::from("• Press 'q' to quit"),
+    ];
+
+    Paragraph::new(text)
+        .block(Block::default().borders(Borders::ALL).title("Controls"))
+        .wrap(Wrap { trim: true })
+}
+
+pub fn render_instructions_battle() -> Paragraph<'static> {
+    let text = vec![
+        Line::from(Span::styled(
+            "Battle Instructions",
+            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        Line::from(Span::styled(
+            "Turn Management:",
+            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+        )),
         Line::from("• Press a number (1-9) to start a turn"),
         Line::from("• Press 'e' to end the current turn"),
         Line::from("• Press 'c' to cancel the current turn"),
         Line::from("• Press 'r' to complete round"),
+        Line::from(""),
+        Line::from(Span::styled(
+            "Reinforcements/Deaths:",
+            Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+        )),
+        Line::from("• Press 'p' to add a PC"),
+        Line::from("• Press 'b' to add an NPC"),
+        Line::from("• Press 'x' to remove an PC or NPC"),
+        Line::from(""),
         Line::from("• Press 'q' to quit"),
     ];
 

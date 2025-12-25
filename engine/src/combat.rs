@@ -282,6 +282,118 @@ impl BattleState {
             round: self.round + 1,
         })
     }
+
+    pub fn add_pc(&self, pc: String) -> Result<Self, String> {
+        // Check if PC already exists
+        if self.starting_parameters.pcs().contains(&pc) {
+            return Err(format!("PC '{}' already in battle", pc));
+        }
+
+        // Check if a turn is in progress for this entity (shouldn't happen, but be safe)
+        if let Some((TurnSide::PC, ref name)) = self.current_turn {
+            if name == &pc {
+                return Err("Cannot add PC that is currently taking a turn".to_string());
+            }
+        }
+
+        let mut new_params = self.starting_parameters.clone();
+        new_params.add_pc(pc.clone());
+
+        Ok(Self {
+            starting_parameters: new_params,
+            current_side: self.current_side,
+            current_turn: self.current_turn.clone(),
+            pc_taken_turns: self.pc_taken_turns.clone(),
+            npc_taken_turns: self.npc_taken_turns.clone(),
+            round: self.round,
+        })
+    }
+
+    pub fn add_npc(&self, npc: String) -> Result<Self, String> {
+        // Check if NPC already exists
+        if self.starting_parameters.npcs().contains(&npc) {
+            return Err(format!("NPC '{}' already in battle", npc));
+        }
+
+        // Check if a turn is in progress for this entity (shouldn't happen, but be safe)
+        if let Some((TurnSide::NPC, ref name)) = self.current_turn {
+            if name == &npc {
+                return Err("Cannot add NPC that is currently taking a turn".to_string());
+            }
+        }
+
+        let mut new_params = self.starting_parameters.clone();
+        new_params.add_npc(npc.clone());
+
+        Ok(Self {
+            starting_parameters: new_params,
+            current_side: self.current_side,
+            current_turn: self.current_turn.clone(),
+            npc_taken_turns: self.npc_taken_turns.clone(),
+            pc_taken_turns: self.pc_taken_turns.clone(),
+            round: self.round,
+        })
+    }
+
+    pub fn remove_pc(&self, pc: &String) -> Result<Self, String> {
+        // Check if PC exists
+        if !self.starting_parameters.pcs().contains(pc) {
+            return Err(format!("PC '{}' not in battle", pc));
+        }
+
+        // Check if PC is currently taking a turn
+        if let Some((TurnSide::PC, ref name)) = self.current_turn {
+            if name == pc {
+                return Err("Cannot remove PC that is currently taking a turn. End or cancel the turn first.".to_string());
+            }
+        }
+
+        let mut new_params = self.starting_parameters.clone();
+        new_params.remove_pc(pc);
+
+        // Remove from taken turns if present
+        let mut new_pc_taken_turns = self.pc_taken_turns.clone();
+        new_pc_taken_turns.remove(pc);
+
+        Ok(Self {
+            starting_parameters: new_params,
+            current_side: self.current_side,
+            current_turn: self.current_turn.clone(),
+            pc_taken_turns: new_pc_taken_turns,
+            npc_taken_turns: self.npc_taken_turns.clone(),
+            round: self.round,
+        })
+    }
+
+    pub fn remove_npc(&self, npc: &String) -> Result<Self, String> {
+        // Check if NPC exists
+        if !self.starting_parameters.npcs().contains(npc) {
+            return Err(format!("NPC '{}' not in battle", npc));
+        }
+
+        // Check if NPC is currently taking a turn
+        if let Some((TurnSide::NPC, ref name)) = self.current_turn {
+            if name == npc {
+                return Err("Cannot remove NPC that is currently taking a turn. End or cancel the turn first.".to_string());
+            }
+        }
+
+        let mut new_params = self.starting_parameters.clone();
+        new_params.remove_npc(npc);
+
+        // Remove from taken turns if present
+        let mut new_npc_taken_turns = self.npc_taken_turns.clone();
+        new_npc_taken_turns.remove(npc);
+
+        Ok(Self {
+            starting_parameters: new_params,
+            current_side: self.current_side,
+            current_turn: self.current_turn.clone(),
+            pc_taken_turns: self.pc_taken_turns.clone(),
+            npc_taken_turns: new_npc_taken_turns,
+            round: self.round,
+        })
+    }
 }
 
 #[cfg(test)]
