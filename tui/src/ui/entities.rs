@@ -1,4 +1,4 @@
-use odsr_engine::{BattleParameters, CombatState, TurnSide};
+use odsr_engine::{CombatParameters, CombatState, TurnSide};
 use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span},
@@ -125,7 +125,7 @@ pub fn render_all_entities(state: &CombatState) -> Paragraph<'static> {
         .wrap(Wrap { trim: true })
 }
 
-pub fn render_all_entities_setup(params: &BattleParameters) -> Paragraph<'static> {
+pub fn render_all_entities_setup(params: &CombatParameters) -> Paragraph<'static> {
     let all_pcs = params.pcs();
     let all_npcs = params.npcs();
     

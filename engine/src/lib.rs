@@ -3,7 +3,7 @@ pub mod dice;
 pub mod npc;
 pub mod pc;
 
-pub use combat::{BattleParameters, CombatState, TurnSide};
+pub use combat::{CombatParameters, CombatState, TurnSide};
 pub use dice::{rolld3s, rolld10s, power_roll};
 pub use npc::NPC;
 pub use pc::PC;
@@ -11,10 +11,10 @@ pub use pc::PC;
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
-    use crate::{combat::{BattleParameters, CombatState, TurnSide}, dice::rolld10s, npc::NPC, pc::PC};
+    use crate::{combat::{CombatParameters, CombatState, TurnSide}, dice::rolld10s, npc::NPC, pc::PC};
 
     #[test]
-    fn test_battle_flow() {
+    fn test_combat_flow() {
         let mut pcs: HashSet<PC> = HashSet::new();
         pcs.insert(PC::new("PC1".to_string()));
         pcs.insert(PC::new("PC2".to_string()));
@@ -32,65 +32,65 @@ mod tests {
             TurnSide::NPC
         };
     
-        let battle_parameters = BattleParameters::new(
+        let combat_parameters = CombatParameters::new(
             pcs.iter().map(|pc| pc.name().clone()),
             npcs.iter().map(|npc| npc.name().clone()),
             starting_side,
         );
         
-        let battle = CombatState::new(battle_parameters);
-        println!("Battle started: {:?}", battle);
+        let combat = CombatState::new(combat_parameters);
+        println!("combat started: {:?}", combat);
         
         // Start PC1's turn
-        let battle = match battle.start_turn(TurnSide::PC, "PC1".to_string()) {
+        let combat = match combat.start_turn(TurnSide::PC, "PC1".to_string()) {
             Ok(new_state) => {
                 println!("PC1 started their turn");
                 new_state
             }
             Err(e) => {
                 println!("Error: {}", e);
-                battle
+                combat
             }
         };
-        println!("Battle state after starting PC1 turn: {:?}", battle);
+        println!("combat state after starting PC1 turn: {:?}", combat);
         
         // End PC1's turn
-        let battle = match battle.end_turn() {
+        let combat = match combat.end_turn() {
             Ok(new_state) => {
                 println!("PC1 ended their turn");
                 new_state
             }
             Err(e) => {
                 println!("Error: {}", e);
-                battle
+                combat
             }
         };
-        println!("Battle state after ending PC1 turn: {:?}", battle);
+        println!("combat state after ending PC1 turn: {:?}", combat);
         
         // Start NPC1's turn
-        let battle = match battle.start_turn(TurnSide::NPC, "NPC1".to_string()) {
+        let combat = match combat.start_turn(TurnSide::NPC, "NPC1".to_string()) {
             Ok(new_state) => {
                 println!("NPC1 started their turn");
                 new_state
             }
             Err(e) => {
                 println!("Error: {}", e);
-                battle
+                combat
             }
         };
-        println!("Battle state after starting NPC1 turn: {:?}", battle);
+        println!("combat state after starting NPC1 turn: {:?}", combat);
         
         // End NPC1's turn
-        let battle = match battle.end_turn() {
+        let combat = match combat.end_turn() {
             Ok(new_state) => {
                 println!("NPC1 ended their turn");
                 new_state
             }
             Err(e) => {
                 println!("Error: {}", e);
-                battle
+                combat
             }
         };
-        println!("Battle state after ending NPC1 turn: {:?}", battle);
+        println!("combat state after ending NPC1 turn: {:?}", combat);
     }
 }

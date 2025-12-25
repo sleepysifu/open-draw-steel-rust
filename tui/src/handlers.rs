@@ -1,13 +1,13 @@
 use crossterm::event::KeyCode;
-use odsr_engine::{BattleParameters, CombatState, TurnSide};
+use odsr_engine::{CombatParameters, CombatState, TurnSide};
 use odsr_engine::dice::rolld10s;
-use crate::app::{App, BattleMode, InputMode, TextInput, TextInputType};
+use crate::app::{App, CombatMode, InputMode, TextInput, TextInputType};
 
 pub fn handle_creation_input(app: &mut App, key: KeyCode) -> bool {
     match key {
         KeyCode::Char('q') => return true,
         KeyCode::Char('n') => {
-            create_battle(app);
+            create_combat(app);
         }
         KeyCode::Char('b') => {
             // Enter text input mode for NPC name
@@ -29,7 +29,7 @@ pub fn handle_creation_input(app: &mut App, key: KeyCode) -> bool {
         }
         KeyCode::Char('x') => {
             // Enter removal mode during setup
-            if let Some(BattleMode::Setup(_)) = app.state {
+            if let Some(CombatMode::Setup(_)) = app.state {
                 app.input_mode = InputMode::RemovingEntity;
                 app.message = "Select entity to remove (press number, or 'x' to cancel):".to_string();
             }
@@ -50,16 +50,16 @@ pub fn handle_text_input(app: &mut App, key: KeyCode) -> bool {
                     app.text_input = None;
                     // Return to appropriate mode based on current state
                     app.input_mode = match app.state {
-                        Some(BattleMode::Setup(_)) => InputMode::CreatingBattle,
-                        Some(BattleMode::Active(_)) => InputMode::TakingTurn,
-                        None => InputMode::CreatingBattle,
+                        Some(CombatMode::Setup(_)) => InputMode::CreatingCombat,
+                        Some(CombatMode::Active(_)) => InputMode::TakingTurn,
+                        None => InputMode::CreatingCombat,
                     };
                     app.message = "Input cancelled".to_string();
                     return false;
                 }
                 
                 match app.state {
-                    Some(BattleMode::Setup(ref mut params)) => {
+                    Some(CombatMode::Setup(ref mut params)) => {
                         // Adding during setup
                         match text_input.input_type {
                             TextInputType::NPCName => {
@@ -79,15 +79,15 @@ pub fn handle_text_input(app: &mut App, key: KeyCode) -> bool {
                                 }
                             }
                         }
-                        app.input_mode = InputMode::CreatingBattle;
+                        app.input_mode = InputMode::CreatingCombat;
                     }
-                    Some(BattleMode::Active(ref state)) => {
-                        // Adding/removing during battle
+                    Some(CombatMode::Active(ref state)) => {
+                        // Adding/removing during combat
                         match text_input.input_type {
                             TextInputType::NPCName => {
                                 match state.add_npc(name.clone()) {
                                     Ok(new_state) => {
-                                        app.state = Some(BattleMode::Active(new_state));
+                                        app.state = Some(CombatMode::Active(new_state));
                                         app.message = format!("Added NPC: {} (reinforcement)", name);
                                     }
                                     Err(e) => {
@@ -98,7 +98,7 @@ pub fn handle_text_input(app: &mut App, key: KeyCode) -> bool {
                             TextInputType::PCName => {
                                 match state.add_pc(name.clone()) {
                                     Ok(new_state) => {
-                                        app.state = Some(BattleMode::Active(new_state));
+                                        app.state = Some(CombatMode::Active(new_state));
                                         app.message = format!("Added PC: {} (reinforcement)", name);
                                     }
                                     Err(e) => {
@@ -110,8 +110,8 @@ pub fn handle_text_input(app: &mut App, key: KeyCode) -> bool {
                         app.input_mode = InputMode::TakingTurn;
                     }
                     None => {
-                        app.message = "No battle state available".to_string();
-                        app.input_mode = InputMode::CreatingBattle;
+                        app.message = "No combat state available".to_string();
+                        app.input_mode = InputMode::CreatingCombat;
                     }
                 }
                 
@@ -123,9 +123,9 @@ pub fn handle_text_input(app: &mut App, key: KeyCode) -> bool {
                 app.text_input = None;
                 // Return to appropriate mode based on current state
                 app.input_mode = match app.state {
-                    Some(BattleMode::Setup(_)) => InputMode::CreatingBattle,
-                    Some(BattleMode::Active(_)) => InputMode::TakingTurn,
-                    None => InputMode::CreatingBattle,
+                    Some(CombatMode::Setup(_)) => InputMode::CreatingCombat,
+                    Some(CombatMode::Active(_)) => InputMode::TakingTurn,
+                    None => InputMode::CreatingCombat,
                 };
                 app.message = "Input cancelled".to_string();
             }
@@ -145,8 +145,8 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
     match key {
         KeyCode::Char('q') => return true,
         KeyCode::Char('b') => {
-            // Enter text input mode for NPC name (during battle)
-            if let Some(BattleMode::Active(_)) = app.state {
+            // Enter text input mode for NPC name (during combat)
+            if let Some(CombatMode::Active(_)) = app.state {
                 app.input_mode = InputMode::TextInput;
                 app.text_input = Some(TextInput {
                     buffer: String::new(),
@@ -156,8 +156,8 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
             }
         }
         KeyCode::Char('p') => {
-            // Enter text input mode for PC name (during battle)
-            if let Some(BattleMode::Active(_)) = app.state {
+            // Enter text input mode for PC name (during combat)
+            if let Some(CombatMode::Active(_)) = app.state {
                 app.input_mode = InputMode::TextInput;
                 app.text_input = Some(TextInput {
                     buffer: String::new(),
@@ -168,16 +168,16 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
         }
         KeyCode::Char('x') => {
             // Enter removal mode
-            if let Some(BattleMode::Active(_)) = app.state {
+            if let Some(CombatMode::Active(_)) = app.state {
                 app.input_mode = InputMode::RemovingEntity;
                 app.message = "Select entity to remove (press number, or 'x' to cancel):".to_string();
             }
         }
         KeyCode::Char('r') => {
-            if let Some(BattleMode::Active(ref state)) = app.state {
+            if let Some(CombatMode::Active(ref state)) = app.state {
                 let new_state = state.complete_round();
                 app.state = match new_state {
-                    Ok(new_state) => Some(BattleMode::Active(new_state)),
+                    Ok(new_state) => Some(CombatMode::Active(new_state)),
                     Err(e) => {
                         app.message = format!("Error: {}", e);
                         return false;
@@ -187,10 +187,10 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
             }
         }
         KeyCode::Char('e') => {
-            if let Some(BattleMode::Active(ref state)) = app.state {
+            if let Some(CombatMode::Active(ref state)) = app.state {
                 match state.end_turn() {
                     Ok(new_state) => {
-                        app.state = Some(BattleMode::Active(new_state));
+                        app.state = Some(CombatMode::Active(new_state));
                         app.message = "Turn ended".to_string();
                     }
                     Err(e) => {
@@ -200,10 +200,10 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
             }
         }
         KeyCode::Char('c') => {
-            if let Some(BattleMode::Active(ref state)) = app.state {
+            if let Some(CombatMode::Active(ref state)) = app.state {
                 match state.cancel_turn() {
                     Ok(new_state) => {
-                        app.state = Some(BattleMode::Active(new_state));
+                        app.state = Some(CombatMode::Active(new_state));
                         app.message = "Turn cancelled".to_string();
                     }
                     Err(e) => {
@@ -213,7 +213,7 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
             }
         }
         KeyCode::Char(c) => {
-            if let Some(BattleMode::Active(ref state)) = app.state {
+            if let Some(CombatMode::Active(ref state)) = app.state {
                 // Check if it's a digit (1-9)
                 if let Some(digit) = c.to_digit(10) {
                     // IndexSet preserves insertion order, so we can index directly
@@ -225,7 +225,7 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
                         let side = state.current_side();
                         match state.start_turn(side, entity.clone()) {
                             Ok(new_state) => {
-                                app.state = Some(BattleMode::Active(new_state));
+                                app.state = Some(CombatMode::Active(new_state));
                                 app.message = format!("{} started their turn", entity);
                             }
                             Err(e) => {
@@ -243,16 +243,16 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
     false
 }
 
-pub fn create_battle(app: &mut App) {
-    let battle_params = match &app.state {
-        Some(BattleMode::Setup(params)) => params,
+pub fn create_combat(app: &mut App) {
+    let combat_params = match &app.state {
+        Some(CombatMode::Setup(params)) => params,
         _ => {
-            app.message = "Battle setup not found!".to_string();
+            app.message = "combat setup not found!".to_string();
             return;
         }
     };
     
-    if battle_params.pcs().is_empty() || battle_params.npcs().is_empty() {
+    if combat_params.pcs().is_empty() || combat_params.npcs().is_empty() {
         app.message = "Please add at least one PC and one NPC first!".to_string();
         return;
     }
@@ -264,17 +264,17 @@ pub fn create_battle(app: &mut App) {
         TurnSide::NPC
     };
 
-    // Create new BattleParameters with updated starting side
-    let battle_parameters = BattleParameters::new(
-        battle_params.pcs().clone(),
-        battle_params.npcs().clone(),
+    // Create new CombatParameters with updated starting side
+    let combat_parameters = CombatParameters::new(
+        combat_params.pcs().clone(),
+        combat_params.npcs().clone(),
         starting_side,
     );
 
-    app.state = Some(BattleMode::Active(CombatState::new(battle_parameters)));
+    app.state = Some(CombatMode::Active(CombatState::new(combat_parameters)));
     app.input_mode = InputMode::TakingTurn;
     app.message = format!(
-        "Battle created! Starting side: {:?} (rolled {})",
+        "combat created! Starting side: {:?} (rolled {})",
         starting_side, starting_roll
     );
 }
@@ -285,9 +285,9 @@ pub fn handle_removal_input(app: &mut App, key: KeyCode) -> bool {
         KeyCode::Char('x') => {
             // Cancel removal mode - return to appropriate mode
             app.input_mode = match app.state {
-                Some(BattleMode::Setup(_)) => InputMode::CreatingBattle,
-                Some(BattleMode::Active(_)) => InputMode::TakingTurn,
-                None => InputMode::CreatingBattle,
+                Some(CombatMode::Setup(_)) => InputMode::CreatingCombat,
+                Some(CombatMode::Active(_)) => InputMode::TakingTurn,
+                None => InputMode::CreatingCombat,
             };
             app.message = "Removal cancelled".to_string();
         }
@@ -295,7 +295,7 @@ pub fn handle_removal_input(app: &mut App, key: KeyCode) -> bool {
             // Check if it's a digit (1-9)
             if let Some(digit) = c.to_digit(10) {
                 match app.state {
-                    Some(BattleMode::Setup(ref mut params)) => {
+                    Some(CombatMode::Setup(ref mut params)) => {
                         // Removal during setup
                         let all_pcs: Vec<String> = params.pcs().iter().cloned().collect();
                         let all_npcs: Vec<String> = params.npcs().iter().cloned().collect();
@@ -321,7 +321,7 @@ pub fn handle_removal_input(app: &mut App, key: KeyCode) -> bool {
                             if removed {
                                 let entity_type = if *is_pc { "PC" } else { "NPC" };
                                 app.message = format!("Removed {}: {}", entity_type, entity_name);
-                                app.input_mode = InputMode::CreatingBattle;
+                                app.input_mode = InputMode::CreatingCombat;
                             } else {
                                 app.message = format!("Entity '{}' not found", entity_name);
                             }
@@ -329,8 +329,8 @@ pub fn handle_removal_input(app: &mut App, key: KeyCode) -> bool {
                             app.message = format!("No entity at position {}", digit);
                         }
                     }
-                    Some(BattleMode::Active(ref state)) => {
-                        // Removal during battle
+                    Some(CombatMode::Active(ref state)) => {
+                        // Removal during combat
                         let all_pcs: Vec<String> = state.all_pcs().iter().cloned().collect();
                         let all_npcs: Vec<String> = state.all_npcs().iter().cloned().collect();
                         let mut all_entities: Vec<(String, bool)> = Vec::new(); // (name, is_pc)
@@ -354,7 +354,7 @@ pub fn handle_removal_input(app: &mut App, key: KeyCode) -> bool {
                             
                             match result {
                                 Ok(new_state) => {
-                                    app.state = Some(BattleMode::Active(new_state));
+                                    app.state = Some(CombatMode::Active(new_state));
                                     let entity_type = if *is_pc { "PC" } else { "NPC" };
                                     app.message = format!("Removed {}: {} (death)", entity_type, entity_name);
                                     app.input_mode = InputMode::TakingTurn;
@@ -368,7 +368,7 @@ pub fn handle_removal_input(app: &mut App, key: KeyCode) -> bool {
                         }
                     }
                     None => {
-                        app.message = "No battle state available".to_string();
+                        app.message = "No combat state available".to_string();
                     }
                 }
             }

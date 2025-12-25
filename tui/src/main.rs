@@ -32,7 +32,7 @@ fn main() -> io::Result<()> {
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
                 match app.input_mode {
-                    InputMode::CreatingBattle => {
+                    InputMode::CreatingCombat => {
                         should_quit = handle_creation_input(&mut app, key.code);
                     }
                     InputMode::TakingTurn => {

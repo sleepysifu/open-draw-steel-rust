@@ -1,19 +1,19 @@
-use odsr_engine::{BattleParameters, CombatState, TurnSide};
+use odsr_engine::{CombatParameters, CombatState, TurnSide};
 
-pub enum BattleMode {
-    Setup(BattleParameters),
+pub enum CombatMode {
+    Setup(CombatParameters),
     Active(CombatState),
 }
 
 pub struct App {
-    pub state: Option<BattleMode>,
+    pub state: Option<CombatMode>,
     pub message: String,
     pub input_mode: InputMode,
     pub text_input: Option<TextInput>,
 }
 
 pub enum InputMode {
-    CreatingBattle,
+    CreatingCombat,
     TakingTurn,
     TextInput,
     RemovingEntity,
@@ -31,16 +31,16 @@ pub struct TextInput {
 
 impl Default for App {
     fn default() -> App {
-        let battle_params = BattleParameters::new(
+        let combat_params = CombatParameters::new(
             Vec::<String>::new(),
             Vec::<String>::new(),
             TurnSide::PC,
         );
         
         App {
-            state: Some(BattleMode::Setup(battle_params)),
-            message: "Welcome! Press 'n' to start the battle, or 'q' to quit.".to_string(),
-            input_mode: InputMode::CreatingBattle,
+            state: Some(CombatMode::Setup(combat_params)),
+            message: "Welcome! Press 'n' to start combat, or 'q' to quit.".to_string(),
+            input_mode: InputMode::CreatingCombat,
             text_input: None,
         }
     }

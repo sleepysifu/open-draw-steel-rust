@@ -123,14 +123,14 @@ pub fn render_combat_state(state: &CombatState) -> Paragraph<'static> {
     
 
     Paragraph::new(text)
-        .block(Block::default().borders(Borders::ALL).title("Battle State"))
+        .block(Block::default().borders(Borders::ALL).title("Combat State"))
         .wrap(Wrap { trim: true })
 }
 
 pub fn render_instructions_combat() -> Paragraph<'static> {
     let text = vec![
         Line::from(Span::styled(
-            "Battle Instructions",
+            "Combat Instructions",
             Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
         )),
         Line::from(""),

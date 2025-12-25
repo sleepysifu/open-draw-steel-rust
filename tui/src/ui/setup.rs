@@ -1,4 +1,4 @@
-use odsr_engine::BattleParameters;
+use odsr_engine::CombatParameters;
 use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span},
@@ -6,17 +6,17 @@ use ratatui::{
 };
 use crate::app::App;
 
-pub fn render_creation_ui(_app: &App, params: &BattleParameters) -> Paragraph<'static> {
+pub fn render_creation_ui(_app: &App, params: &CombatParameters) -> Paragraph<'static> {
     let mut text = vec![
         Line::from(Span::styled(
-            "Create a Battle",
+            "Create a new Combat",
             Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
     ];
     
     text.push(Line::from(Span::styled(
-        "PCs in battle:",
+        "PCs in combat:",
         Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
     )));
     let pcs = params.pcs();
@@ -38,7 +38,7 @@ pub fn render_creation_ui(_app: &App, params: &BattleParameters) -> Paragraph<'s
     
     text.push(Line::from(""));
     text.push(Line::from(Span::styled(
-        "NPCs in battle:",
+        "NPCs in combat:",
         Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
     )));
     let npcs = params.npcs();
@@ -58,7 +58,7 @@ pub fn render_creation_ui(_app: &App, params: &BattleParameters) -> Paragraph<'s
     }
     
     Paragraph::new(text)
-        .block(Block::default().borders(Borders::ALL).title("Battle Setup"))
+        .block(Block::default().borders(Borders::ALL).title("Combat Setup"))
         .wrap(Wrap { trim: true })
 }
 
@@ -72,7 +72,7 @@ pub fn render_instructions_setup() -> Paragraph<'static> {
         Line::from("• Press 'p' to add a PC"),
         Line::from("• Press 'b' to add an NPC"),
         Line::from("• Press 'x' to remove an PC or NPC"),
-        Line::from("• Press 'n' to start battle"),
+        Line::from("• Press 'n' to start combat"),
         Line::from(""),
         Line::from("• Press 'q' to quit"),
     ];
