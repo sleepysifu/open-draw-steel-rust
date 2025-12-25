@@ -1,7 +1,8 @@
-## Running
+## Running the TUI
 
+open a terminal within the repository and run:
 ```bash
-cargo run --package crystal-heart-cli
+cargo run --package odsr-tui
 ```
 
 ## Controls

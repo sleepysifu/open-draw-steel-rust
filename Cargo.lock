@@ -90,23 +90,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "crystal-heart"
-version = "0.1.0"
-dependencies = [
- "rand",
-]
-
-[[package]]
-name = "crystal-heart-cli"
-version = "0.1.0"
-dependencies = [
- "crossterm 0.28.1",
- "crystal-heart",
- "rand",
- "ratatui",
-]
-
-[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -235,6 +218,23 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "odsr-engine"
+version = "0.1.0"
+dependencies = [
+ "rand",
+]
+
+[[package]]
+name = "odsr-tui"
+version = "0.1.0"
+dependencies = [
+ "crossterm 0.28.1",
+ "odsr-engine",
+ "rand",
+ "ratatui",
 ]
 
 [[package]]

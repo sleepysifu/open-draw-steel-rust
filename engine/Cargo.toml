@@ -1,5 +1,5 @@
 [package]
-name = "crystal-heart"
+name = "odsr-engine"
 version = "0.1.0"
 edition = "2024"
 

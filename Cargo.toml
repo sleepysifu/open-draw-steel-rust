@@ -1,6 +1,8 @@
 [workspace]
-members = ["engine", "cli"]
+members = ["engine", "tui"]
 resolver = "3"
 
 [workspace.dependencies]
 rand = "0.8"
+odsr-engine = { path = "engine" }
+odsr-tui = { path = "tui" }

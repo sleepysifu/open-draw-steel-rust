@@ -5,7 +5,8 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use crystal_heart::{BattleParameters, BattleState, NPC, PC, TurnSide, rolld10s};
+use odsr_engine::{BattleParameters, BattleState, NPC, PC, TurnSide};
+use odsr_engine::dice::rolld10s;
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
@@ -211,7 +212,7 @@ fn ui(f: &mut Frame, app: &App) {
         .split(f.size());
 
     // Title
-    let title = Paragraph::new("Crystal Heart Battle System")
+    let title = Paragraph::new("ODSR Battle System")
         .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
         .alignment(Alignment::Center)
         .block(Block::default().borders(Borders::ALL));
