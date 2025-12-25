@@ -16,8 +16,13 @@ use ratatui::{
     Frame, Terminal,
 };
 
+enum BattleMode {
+    Setup(BattleParameters),
+    Active(BattleState),
+}
+
 struct App {
-    battle_state: Option<BattleState>,
+    battle: Option<BattleMode>,
     pcs: HashSet<PC>,
     npcs: HashSet<NPC>,
     message: String,
@@ -41,11 +46,17 @@ impl Default for App {
         npcs.insert(NPC::new("NPC2".to_string()));
         npcs.insert(NPC::new("NPC3".to_string()));
         
+        let battle_params = BattleParameters::new(
+            HashSet::new(),
+            HashSet::new(),
+            TurnSide::PC,
+        );
+        
         App {
-            battle_state: None,
+            battle: Some(BattleMode::Setup(battle_params)),
             pcs,
             npcs,
-            message: "Welcome! Press 'n' to create a new battle, or 'q' to quit.".to_string(),
+            message: "Welcome! Press 'n' to start the battle, or 'q' to quit.".to_string(),
             input_mode: InputMode::CreatingBattle,
         }
     }
@@ -101,7 +112,34 @@ fn handle_creation_input(app: &mut App, key: KeyCode) -> bool {
             app.message = "Enter PC name (then press Enter):".to_string();
         }
         KeyCode::Char('b') => {
-            app.message = "Enter NPC name (then press Enter):".to_string();
+            if let Some(BattleMode::Setup(ref mut params)) = app.battle {
+                // Find first NPC not already in battle
+                let npc_to_add = app.npcs.iter()
+                    .find(|npc| !params.npcs().contains(npc.name()));
+                
+                if let Some(npc) = npc_to_add {
+                    let npc_name = npc.name().clone();
+                    params.add_npc(npc_name.clone());
+                    app.message = format!("Added NPC: {}", npc_name);
+                } else {
+                    app.message = "All NPCs already added or no NPCs available".to_string();
+                }
+            }
+        }
+        KeyCode::Char('p') => {
+            if let Some(BattleMode::Setup(ref mut params)) = app.battle {
+                // Find first PC not already in battle
+                let pc_to_add = app.pcs.iter()
+                    .find(|pc| !params.pcs().contains(pc.name()));
+                
+                if let Some(pc) = pc_to_add {
+                    let pc_name = pc.name().clone();
+                    params.add_pc(pc_name.clone());
+                    app.message = format!("Added PC: {}", pc_name);
+                } else {
+                    app.message = "All PCs already added or no PCs available".to_string();
+                }
+            }
         }
         _ => {}
     }
@@ -112,10 +150,10 @@ fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
     match key {
         KeyCode::Char('q') => return true,
         KeyCode::Char('r') => {
-            if let Some(ref state) = app.battle_state {
+            if let Some(BattleMode::Active(ref state)) = app.battle {
                 let new_state = state.complete_round();
-                app.battle_state = match new_state {
-                    Ok(new_state) => Some(new_state),
+                app.battle = match new_state {
+                    Ok(new_state) => Some(BattleMode::Active(new_state)),
                     Err(e) => {
                         app.message = format!("Error: {}", e);
                         return false;
@@ -125,10 +163,10 @@ fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
             }
         }
         KeyCode::Char('e') => {
-            if let Some(ref state) = app.battle_state {
+            if let Some(BattleMode::Active(ref state)) = app.battle {
                 match state.end_turn() {
                     Ok(new_state) => {
-                        app.battle_state = Some(new_state);
+                        app.battle = Some(BattleMode::Active(new_state));
                         app.message = "Turn ended".to_string();
                     }
                     Err(e) => {
@@ -138,10 +176,10 @@ fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
             }
         }
         KeyCode::Char('c') => {
-            if let Some(ref state) = app.battle_state {
+            if let Some(BattleMode::Active(ref state)) = app.battle {
                 match state.cancel_turn() {
                     Ok(new_state) => {
-                        app.battle_state = Some(new_state);
+                        app.battle = Some(BattleMode::Active(new_state));
                         app.message = "Turn cancelled".to_string();
                     }
                     Err(e) => {
@@ -151,7 +189,7 @@ fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
             }
         }
         KeyCode::Char(c) => {
-            if let Some(ref state) = app.battle_state {
+            if let Some(BattleMode::Active(ref state)) = app.battle {
                 // Check if it's a digit (1-9)
                 if let Some(digit) = c.to_digit(10) {
                     let available: Vec<String> = state.available().into_iter().collect();
@@ -162,7 +200,7 @@ fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
                         let side = state.current_side();
                         match state.start_turn(side, entity.clone()) {
                             Ok(new_state) => {
-                                app.battle_state = Some(new_state);
+                                app.battle = Some(BattleMode::Active(new_state));
                                 app.message = format!("{} started their turn", entity);
                             }
                             Err(e) => {
@@ -181,7 +219,15 @@ fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
 }
 
 fn create_battle(app: &mut App) {
-    if app.pcs.is_empty() || app.npcs.is_empty() {
+    let battle_params = match &app.battle {
+        Some(BattleMode::Setup(params)) => params,
+        _ => {
+            app.message = "Battle setup not found!".to_string();
+            return;
+        }
+    };
+    
+    if battle_params.pcs().is_empty() || battle_params.npcs().is_empty() {
         app.message = "Please add at least one PC and one NPC first!".to_string();
         return;
     }
@@ -193,13 +239,14 @@ fn create_battle(app: &mut App) {
         TurnSide::NPC
     };
 
+    // Create new BattleParameters with updated starting side
     let battle_parameters = BattleParameters::new(
-        app.pcs.iter().map(|pc| pc.name().clone()).collect(),
-        app.npcs.iter().map(|npc| npc.name().clone()).collect(),
+        battle_params.pcs().clone(),
+        battle_params.npcs().clone(),
         starting_side,
     );
 
-    app.battle_state = Some(BattleState::new(battle_parameters));
+    app.battle = Some(BattleMode::Active(BattleState::new(battle_parameters)));
     app.input_mode = InputMode::TakingTurn;
     app.message = format!(
         "Battle created! Starting side: {:?} (rolled {})",
@@ -231,18 +278,20 @@ fn ui(f: &mut Frame, app: &App) {
         .split(chunks[1]);
 
     // Left side: Battle state or creation
-    let left_content = if let Some(ref state) = app.battle_state {
-        render_battle_state(state)
-    } else {
-        render_creation_ui(app)
+    let left_content = match app.battle {
+        Some(BattleMode::Active(ref state)) => render_battle_state(state),
+        Some(BattleMode::Setup(ref params)) => render_creation_ui(app, params),
+        None => {
+            let empty_params = BattleParameters::new(HashSet::new(), HashSet::new(), TurnSide::PC);
+            render_creation_ui(app, &empty_params)
+        },
     };
     f.render_widget(left_content, main_chunks[0]);
 
     // Right side: Available entities or instructions
-    let right_content = if let Some(ref state) = app.battle_state {
-        render_available_entities(state)
-    } else {
-        render_instructions()
+    let right_content = match app.battle {
+        Some(BattleMode::Active(ref state)) => render_available_entities(state),
+        _ => render_instructions(),
     };
     f.render_widget(right_content, main_chunks[1]);
 
@@ -421,38 +470,71 @@ fn render_available_entities(state: &BattleState) -> Paragraph<'static> {
         .wrap(Wrap { trim: true })
 }
 
-fn render_creation_ui(app: &App) -> Paragraph<'static> {
-    let text = vec![
+fn render_creation_ui(_app: &App, params: &BattleParameters) -> Paragraph<'static> {
+    let mut text = vec![
         Line::from(Span::styled(
             "Create a Battle",
             Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("PCs: ", Style::default().fg(Color::Cyan)),
-            Span::styled(
-                format!("{}", app.pcs.len()),
-                Style::default().fg(Color::White),
-            ),
-        ]),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled("NPCs: ", Style::default().fg(Color::Magenta)),
-            Span::styled(
-                format!("{}", app.npcs.len()),
-                Style::default().fg(Color::White),
-            ),
-        ]),
-        Line::from(""),
-        Line::from(Span::styled(
-            "Press 'n' to start battle",
-            Style::default().fg(Color::Yellow),
-        )),
-        Line::from(Span::styled(
-            "Note: Add PCs/NPCs in code for now",
-            Style::default().fg(Color::Gray),
-        )),
     ];
+    
+    text.push(Line::from(Span::styled(
+        "PCs in battle:",
+        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+    )));
+    let pcs = params.pcs();
+    if pcs.is_empty() {
+        text.push(Line::from(Span::styled(
+            "  (none)",
+            Style::default().fg(Color::DarkGray),
+        )));
+    } else {
+        let mut pc_vec: Vec<&String> = pcs.iter().collect();
+        pc_vec.sort();
+        for pc in pc_vec {
+            text.push(Line::from(Span::styled(
+                format!("  • {}", pc),
+                Style::default().fg(Color::White),
+            )));
+        }
+    }
+    
+    text.push(Line::from(""));
+    text.push(Line::from(Span::styled(
+        "NPCs in battle:",
+        Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+    )));
+    let npcs = params.npcs();
+    if npcs.is_empty() {
+        text.push(Line::from(Span::styled(
+            "  (none)",
+            Style::default().fg(Color::DarkGray),
+        )));
+    } else {
+        let mut npc_vec: Vec<&String> = npcs.iter().collect();
+        npc_vec.sort();
+        for npc in npc_vec {
+            text.push(Line::from(Span::styled(
+                format!("  • {}", npc),
+                Style::default().fg(Color::White),
+            )));
+        }
+    }
+    
+    text.push(Line::from(""));
+    text.push(Line::from(Span::styled(
+        "Press 'p' to add a PC",
+        Style::default().fg(Color::Yellow),
+    )));
+    text.push(Line::from(Span::styled(
+        "Press 'b' to add an NPC",
+        Style::default().fg(Color::Yellow),
+    )));
+    text.push(Line::from(Span::styled(
+        "Press 'n' to start battle",
+        Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+    )));
 
     Paragraph::new(text)
         .block(Block::default().borders(Borders::ALL).title("Battle Setup"))

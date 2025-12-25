@@ -44,6 +44,22 @@ impl BattleParameters {
     pub fn starting_side(&self) -> TurnSide {
         self.starting_side
     }
+    
+    pub fn add_pc(&mut self, pc: String) {
+        self.pcs.insert(pc);
+    }
+    
+    pub fn add_npc(&mut self, npc: String) {
+        self.npcs.insert(npc);
+    }
+    
+    pub fn remove_pc(&mut self, pc: &String) -> bool {
+        self.pcs.remove(pc)
+    }
+    
+    pub fn remove_npc(&mut self, npc: &String) -> bool {
+        self.npcs.remove(npc)
+    }
 }
 
 #[derive(Debug, Clone)]
