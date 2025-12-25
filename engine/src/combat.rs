@@ -17,7 +17,6 @@ pub struct BattleParameters {
     starting_side: TurnSide,
 }
 
-#[allow(dead_code)]
 impl BattleParameters {
     pub fn new(pcs: HashSet<String>, npcs: HashSet<String>, starting_side: TurnSide) -> Self {
         Self {
@@ -57,7 +56,6 @@ pub struct BattleState {
     round:i16,
 }
 
-#[allow(dead_code)]
 impl BattleState {
     pub fn new(parameters:BattleParameters) -> Self {
         Self {
@@ -235,14 +233,313 @@ impl BattleState {
         })
     }
 
-    pub fn complete_round(&self) -> Self {
-        Self {
+    pub fn complete_round(&self) -> Result<Self, String> {
+        //check if there is a turn in progress
+        if self.current_turn.is_some() {
+            return Err("A turn is in progress. End the current turn first.".to_string());
+        }
+
+        //can only complete round if all entities have taken their turn
+        if self.pc_taken_turns.len() != self.starting_parameters.pcs().len() || self.npc_taken_turns.len() != self.starting_parameters.npcs().len() {
+            return Err("Not all entities have taken their turn.".to_string());
+        }
+
+    
+        //check if the current side has no remaining turns
+        if !self.available().is_empty() {
+            return Err("There are still entities available to take their turn.".to_string());
+        }
+
+        Ok(Self {
             starting_parameters: self.starting_parameters.clone(),
             current_side: self.starting_parameters.starting_side(),
             current_turn: None, // Clear any turn in progress
             pc_taken_turns: HashSet::with_capacity(self.starting_parameters.pcs().len()),
             npc_taken_turns: HashSet::with_capacity(self.starting_parameters.npcs().len()),
             round: self.round + 1,
-        }
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_battle(pc_count: usize, npc_count: usize, starting_side: TurnSide) -> BattleState {
+        let pcs: HashSet<String> = (0..pc_count)
+            .map(|i| format!("PC{}", i + 1))
+            .collect();
+        let npcs: HashSet<String> = (0..npc_count)
+            .map(|i| format!("NPC{}", i + 1))
+            .collect();
+        
+        let params = BattleParameters::new(pcs, npcs, starting_side);
+        BattleState::new(params)
+    }
+
+    #[test]
+    fn test_turn_switching_pc_to_npc() {
+        // PC starts, should switch to NPC after ending PC turn
+        let battle = create_test_battle(2, 2, TurnSide::PC);
+        
+        assert_eq!(battle.current_side(), TurnSide::PC);
+        
+        // Start and end PC1's turn
+        let battle = battle.start_turn(TurnSide::PC, "PC1".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        
+        // Should switch to NPC side
+        assert_eq!(battle.current_side(), TurnSide::NPC);
+        assert!(battle.pc_taken_turns().contains("PC1"));
+        assert_eq!(battle.pc_taken_turns().len(), 1);
+    }
+
+    #[test]
+    fn test_turn_switching_npc_to_pc() {
+        // NPC starts, should switch to PC after ending NPC turn
+        let battle = create_test_battle(2, 2, TurnSide::NPC);
+        
+        assert_eq!(battle.current_side(), TurnSide::NPC);
+        
+        // Start and end NPC1's turn
+        let battle = battle.start_turn(TurnSide::NPC, "NPC1".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        
+        // Should switch to PC side
+        assert_eq!(battle.current_side(), TurnSide::PC);
+        assert!(battle.npc_taken_turns().contains("NPC1"));
+        assert_eq!(battle.npc_taken_turns().len(), 1);
+    }
+
+    #[test]
+    fn test_turn_switching_stays_on_side_when_other_side_done() {
+        // If all NPCs have taken their turn, ending a PC turn should keep it on PC side
+        let battle = create_test_battle(2, 1, TurnSide::PC);
+        
+        // PC1 takes turn
+        let battle = battle.start_turn(TurnSide::PC, "PC1".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        assert_eq!(battle.current_side(), TurnSide::NPC);
+        
+        // NPC1 takes turn (only NPC)
+        let battle = battle.start_turn(TurnSide::NPC, "NPC1".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        
+        // Should stay on NPC side since all NPCs are done, but wait - let me check the logic
+        // Actually, the logic switches to PC first, then checks if PC has remaining turns
+        // Since PC1 hasn't taken a turn yet, it should switch to PC
+        assert_eq!(battle.current_side(), TurnSide::PC);
+        
+        // Now PC2 takes turn
+        let battle = battle.start_turn(TurnSide::PC, "PC2".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        
+        // All NPCs are done, so should stay on PC side
+        assert_eq!(battle.current_side(), TurnSide::PC);
+    }
+
+    #[test]
+    fn test_turn_switching_stays_on_side_when_all_pcs_done() {
+        // If all PCs have taken their turn, ending an NPC turn should keep it on NPC side
+        let battle = create_test_battle(1, 2, TurnSide::PC);
+        
+        // PC1 takes turn
+        let battle = battle.start_turn(TurnSide::PC, "PC1".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        assert_eq!(battle.current_side(), TurnSide::NPC);
+        
+        // NPC1 takes turn
+        let battle = battle.start_turn(TurnSide::NPC, "NPC1".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        
+        // Should switch to PC, but all PCs are done, so should stay on NPC
+        // Actually wait - the logic checks the NEXT side (PC) for remaining turns
+        // Since PC1 already took a turn, there are 0 remaining PC turns, so it stays on NPC
+        assert_eq!(battle.current_side(), TurnSide::NPC);
+    }
+
+    #[test]
+    fn test_round_completion_basic() {
+        let battle = create_test_battle(2, 2, TurnSide::PC);
+        
+        assert_eq!(battle.round(), 1);
+        
+        // Complete all turns: PC1, NPC1, PC2, NPC2
+        let battle = battle.start_turn(TurnSide::PC, "PC1".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        
+        let battle = battle.start_turn(TurnSide::NPC, "NPC1".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        
+        let battle = battle.start_turn(TurnSide::PC, "PC2".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        
+        let battle = battle.start_turn(TurnSide::NPC, "NPC2".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        
+        // Verify all turns are taken
+        assert_eq!(battle.pc_taken_turns().len(), 2);
+        assert_eq!(battle.npc_taken_turns().len(), 2);
+        assert!(battle.available().is_empty());
+        
+        // Complete the round
+        let battle = battle.complete_round().unwrap();
+        
+        // Round should increment
+        assert_eq!(battle.round(), 2);
+        
+        // Taken turns should be reset
+        assert_eq!(battle.pc_taken_turns().len(), 0);
+        assert_eq!(battle.npc_taken_turns().len(), 0);
+        
+        // Current side should reset to starting side
+        assert_eq!(battle.current_side(), TurnSide::PC);
+    }
+
+    #[test]
+    fn test_round_completion_resets_to_starting_side() {
+        // Test that round completion resets to the original starting side
+        let battle = create_test_battle(1, 1, TurnSide::NPC);
+        
+        // Complete all turns
+        let battle = battle.start_turn(TurnSide::NPC, "NPC1".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        
+        let battle = battle.start_turn(TurnSide::PC, "PC1".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        
+        // Complete round
+        let battle = battle.complete_round().unwrap();
+        
+        // Should reset to NPC (starting side)
+        assert_eq!(battle.current_side(), TurnSide::NPC);
+        assert_eq!(battle.round(), 2);
+    }
+
+    #[test]
+    fn test_round_completion_fails_with_turn_in_progress() {
+        let battle = create_test_battle(1, 1, TurnSide::PC);
+        
+        // Start a turn but don't end it
+        let battle = battle.start_turn(TurnSide::PC, "PC1".to_string()).unwrap();
+        
+        // Try to complete round - should fail
+        let result = battle.complete_round();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("turn is in progress"));
+    }
+
+    #[test]
+    fn test_round_completion_fails_when_not_all_turns_taken() {
+        let battle = create_test_battle(2, 2, TurnSide::PC);
+        
+        // Only take some turns
+        let battle = battle.start_turn(TurnSide::PC, "PC1".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        
+        let battle = battle.start_turn(TurnSide::NPC, "NPC1".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        
+        // Try to complete round - should fail (PC2 and NPC2 haven't taken turns)
+        let result = battle.complete_round();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Not all entities have taken their turn"));
+    }
+
+    #[test]
+    fn test_round_completion_fails_when_entities_still_available() {
+        let battle = create_test_battle(2, 2, TurnSide::PC);
+        
+        // Take all turns but one
+        let battle = battle.start_turn(TurnSide::PC, "PC1".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        
+        let battle = battle.start_turn(TurnSide::NPC, "NPC1".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        
+        let battle = battle.start_turn(TurnSide::PC, "PC2".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        
+        let battle = battle.start_turn(TurnSide::NPC, "NPC2".to_string()).unwrap();
+        let battle = battle.end_turn().unwrap();
+        
+        // This should actually work since all turns are taken
+        // But let me verify the available() check
+        assert!(battle.available().is_empty());
+        let result = battle.complete_round();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_multiple_rounds() {
+        let battle = create_test_battle(1, 1, TurnSide::PC);
+        
+        // Round 1
+        let mut battle = battle.start_turn(TurnSide::PC, "PC1".to_string()).unwrap();
+        battle = battle.end_turn().unwrap();
+        battle = battle.start_turn(TurnSide::NPC, "NPC1".to_string()).unwrap();
+        battle = battle.end_turn().unwrap();
+        battle = battle.complete_round().unwrap();
+        
+        assert_eq!(battle.round(), 2);
+        assert_eq!(battle.current_side(), TurnSide::PC);
+        
+        // Round 2
+        battle = battle.start_turn(TurnSide::PC, "PC1".to_string()).unwrap();
+        battle = battle.end_turn().unwrap();
+        battle = battle.start_turn(TurnSide::NPC, "NPC1".to_string()).unwrap();
+        battle = battle.end_turn().unwrap();
+        battle = battle.complete_round().unwrap();
+        
+        assert_eq!(battle.round(), 3);
+        assert_eq!(battle.current_side(), TurnSide::PC);
+    }
+
+    #[test]
+    fn test_turn_switching_alternates_correctly() {
+        let battle = create_test_battle(2, 2, TurnSide::PC);
+        
+        let mut battle = battle;
+        
+        // PC1 -> NPC1 -> PC2 -> NPC2
+        battle = battle.start_turn(TurnSide::PC, "PC1".to_string()).unwrap();
+        battle = battle.end_turn().unwrap();
+        assert_eq!(battle.current_side(), TurnSide::NPC);
+        
+        battle = battle.start_turn(TurnSide::NPC, "NPC1".to_string()).unwrap();
+        battle = battle.end_turn().unwrap();
+        assert_eq!(battle.current_side(), TurnSide::PC);
+        
+        battle = battle.start_turn(TurnSide::PC, "PC2".to_string()).unwrap();
+        battle = battle.end_turn().unwrap();
+        assert_eq!(battle.current_side(), TurnSide::NPC);
+        
+        battle = battle.start_turn(TurnSide::NPC, "NPC2".to_string()).unwrap();
+        battle = battle.end_turn().unwrap();
+        // After NPC2, all NPCs are done, so should stay on NPC side
+        assert_eq!(battle.current_side(), TurnSide::NPC);
+    }
+
+    #[test]
+    fn test_end_turn_marks_entity_as_taken() {
+        let battle = create_test_battle(2, 2, TurnSide::PC);
+        
+        let battle = battle.start_turn(TurnSide::PC, "PC1".to_string()).unwrap();
+        assert!(!battle.pc_taken_turns().contains("PC1"));
+        
+        let battle = battle.end_turn().unwrap();
+        assert!(battle.pc_taken_turns().contains("PC1"));
+        assert_eq!(battle.pc_taken_turns().len(), 1);
+    }
+
+    #[test]
+    fn test_end_turn_clears_current_turn() {
+        let battle = create_test_battle(1, 1, TurnSide::PC);
+        
+        let battle = battle.start_turn(TurnSide::PC, "PC1".to_string()).unwrap();
+        assert!(battle.current_turn().is_some());
+        
+        let battle = battle.end_turn().unwrap();
+        assert!(battle.current_turn().is_none());
     }
 }

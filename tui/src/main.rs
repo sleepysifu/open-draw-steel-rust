@@ -114,7 +114,13 @@ fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
         KeyCode::Char('r') => {
             if let Some(ref state) = app.battle_state {
                 let new_state = state.complete_round();
-                app.battle_state = Some(new_state);
+                app.battle_state = match new_state {
+                    Ok(new_state) => Some(new_state),
+                    Err(e) => {
+                        app.message = format!("Error: {}", e);
+                        return false;
+                    }
+                };
                 app.message = "Round completed!".to_string();
             }
         }
