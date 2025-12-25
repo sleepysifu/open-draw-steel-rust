@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use indexmap::IndexSet;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TurnSide {
@@ -12,32 +13,32 @@ pub enum TurnSide {
  */
 #[derive(Debug, Clone)]
 pub struct BattleParameters {
-    pcs: HashSet<String>,
-    npcs: HashSet<String>,
+    pcs: IndexSet<String>,
+    npcs: IndexSet<String>,
     starting_side: TurnSide,
 }
 
 impl BattleParameters {
-    pub fn new(pcs: HashSet<String>, npcs: HashSet<String>, starting_side: TurnSide) -> Self {
+    pub fn new(pcs: impl IntoIterator<Item = String>, npcs: impl IntoIterator<Item = String>, starting_side: TurnSide) -> Self {
         Self {
-            pcs,
-            npcs,
+            pcs: pcs.into_iter().collect(),
+            npcs: npcs.into_iter().collect(),
             starting_side,
         }
     }
     
-    pub fn players(&self, turn: TurnSide) -> &HashSet<String> {
+    pub fn players(&self, turn: TurnSide) -> &IndexSet<String> {
         match turn {
             TurnSide::NPC => &self.npcs,
             TurnSide::PC => &self.pcs,
         }
     }
 
-    pub fn pcs(&self) -> &HashSet<String> {
+    pub fn pcs(&self) -> &IndexSet<String> {
         &self.pcs
     }
     
-    pub fn npcs(&self) -> &HashSet<String> {
+    pub fn npcs(&self) -> &IndexSet<String> {
         &self.npcs
     }
     
@@ -54,11 +55,11 @@ impl BattleParameters {
     }
     
     pub fn remove_pc(&mut self, pc: &String) -> bool {
-        self.pcs.remove(pc)
+        self.pcs.shift_remove(pc)
     }
     
     pub fn remove_npc(&mut self, npc: &String) -> bool {
-        self.npcs.remove(npc)
+        self.npcs.shift_remove(npc)
     }
 }
 
@@ -92,11 +93,11 @@ impl BattleState {
         self.round
     }
 
-    pub fn all_pcs(&self) -> &HashSet<String> {
+    pub fn all_pcs(&self) -> &IndexSet<String> {
         self.starting_parameters.pcs()
     }
 
-    pub fn all_npcs(&self) -> &HashSet<String> {
+    pub fn all_npcs(&self) -> &IndexSet<String> {
         self.starting_parameters.npcs()
     }
 
@@ -112,32 +113,36 @@ impl BattleState {
         self.current_turn.as_ref()
     }
 
-    pub fn available(&self) -> HashSet<String> {
+    pub fn available(&self) -> IndexSet<String> {
         match self.current_side {
             TurnSide::PC => {
                 // PCs can act, exclude those who already took their turn or are currently taking it
-                let mut available: HashSet<String> = self.starting_parameters.pcs()
-                    .difference(&self.pc_taken_turns)
+                // Preserve insertion order from IndexSet
+                let mut available: IndexSet<String> = self.starting_parameters.pcs()
+                    .iter()
+                    .filter(|pc| !self.pc_taken_turns.contains(*pc))
                     .cloned()
                     .collect();
                 
                 // Remove the entity currently taking their turn
                 if let Some((TurnSide::PC, ref name)) = self.current_turn {
-                    available.remove(name);
+                    available.shift_remove(name);
                 }
                 
                 available
             }
             TurnSide::NPC => {
                 // NPCs can act, exclude those who already took their turn or are currently taking it
-                let mut available: HashSet<String> = self.starting_parameters.npcs()
-                    .difference(&self.npc_taken_turns)
+                // Preserve insertion order from IndexSet
+                let mut available: IndexSet<String> = self.starting_parameters.npcs()
+                    .iter()
+                    .filter(|npc| !self.npc_taken_turns.contains(*npc))
                     .cloned()
                     .collect();
                 
                 // Remove the entity currently taking their turn
                 if let Some((TurnSide::NPC, ref name)) = self.current_turn {
-                    available.remove(name);
+                    available.shift_remove(name);
                 }
                 
                 available
@@ -223,13 +228,15 @@ impl BattleState {
             TurnSide::PC => {
                 // Check how many PCs haven't taken their turn yet
                 self.starting_parameters.pcs()
-                    .difference(&pc_taken_turns)
+                    .iter()
+                    .filter(|pc| !pc_taken_turns.contains(*pc))
                     .count()
             }
             TurnSide::NPC => {
                 // Check how many NPCs haven't taken their turn yet
                 self.starting_parameters.npcs()
-                    .difference(&npc_taken_turns)
+                    .iter()
+                    .filter(|npc| !npc_taken_turns.contains(*npc))
                     .count()
             }
         };

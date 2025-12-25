@@ -33,8 +33,8 @@ mod tests {
         };
     
         let battle_parameters = BattleParameters::new(
-            pcs.iter().map(|pc| pc.name().clone()).collect(),
-            npcs.iter().map(|npc| npc.name().clone()).collect(),
+            pcs.iter().map(|pc| pc.name().clone()),
+            npcs.iter().map(|npc| npc.name().clone()),
             starting_side,
         );
         
