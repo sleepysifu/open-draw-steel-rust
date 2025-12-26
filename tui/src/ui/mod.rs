@@ -11,7 +11,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
-use crate::{app::{App, CombatMode}, ui::entities::{render_all_entities_setup}};
+use crate::{app::{App, CombatMode, InputMode}, ui::entities::{render_all_entities_setup}};
 
 pub fn render_ui(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
@@ -49,7 +49,7 @@ pub fn render_ui(f: &mut Frame, app: &App) {
 
     // Right side: Available entities, all entities (for removal), abilities (during turn), or instructions
     let right_content = match (&app.state, &app.input_mode) {
-        (Some(CombatMode::Active(state)), crate::app::InputMode::RemovingEntity) => {
+        (Some(CombatMode::Active(state)), InputMode::RemovingEntity) => {
             entities::render_all_entities(state)
         }
         (Some(CombatMode::Active(state)), _) => {
@@ -60,8 +60,14 @@ pub fn render_ui(f: &mut Frame, app: &App) {
                 entities::render_available_entities(state)
             }
         }
-        (Some(CombatMode::Setup(params)), crate::app::InputMode::RemovingEntity) => {
+        (Some(CombatMode::Setup(params)), InputMode::RemovingEntity) => {
             render_all_entities_setup(params)
+        }
+        (_, InputMode::SelectingMonsterDefinition) => {
+            setup::render_monster_definitions(app)
+        }
+        (_, InputMode::SelectingHeroDefinition) => {
+            setup::render_hero_definitions(app)
         }
         (Some(CombatMode::Setup(_)), _) => setup::render_instructions_setup(),
         _ => combat::render_instructions_combat(),

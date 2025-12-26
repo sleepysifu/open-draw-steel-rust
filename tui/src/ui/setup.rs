@@ -81,3 +81,87 @@ pub fn render_instructions_setup() -> Paragraph<'static> {
         .block(Block::default().borders(Borders::ALL).title("Controls"))
         .wrap(Wrap { trim: true })
 }
+
+pub fn render_monster_definitions(app: &App) -> Paragraph<'static> {
+    let mut items: Vec<Line> = vec![Line::from(Span::styled(
+        "Select monster definition:",
+        Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+    ))];
+    
+    items.push(Line::from(""));
+    
+    if app.monster_definitions.is_empty() {
+        items.push(Line::from(Span::styled(
+            "No monster definitions available",
+            Style::default().fg(Color::Red),
+        )));
+    } else {
+        let definitions: Vec<&String> = app.monster_definitions.keys().collect();
+        for (idx, def_name) in definitions.iter().enumerate() {
+            let number = idx + 1; // Display 1-based numbers
+            let definition = app.monster_definitions.get(*def_name).unwrap();
+            items.push(Line::from(vec![
+                Span::styled(
+                    format!("[{}] ", number),
+                    Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    format!("{} (max stamina: {})", def_name, definition.max_stamina),
+                    Style::default().fg(Color::White),
+                ),
+            ]));
+        }
+    }
+    
+    items.push(Line::from(""));
+    items.push(Line::from(Span::styled(
+        "Press 'x' to cancel",
+        Style::default().fg(Color::Yellow),
+    )));
+    
+    Paragraph::new(items)
+        .block(Block::default().borders(Borders::ALL).title("Monster Definitions"))
+        .wrap(Wrap { trim: true })
+}
+
+pub fn render_hero_definitions(app: &App) -> Paragraph<'static> {
+    let mut items: Vec<Line> = vec![Line::from(Span::styled(
+        "Select hero definition:",
+        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+    ))];
+    
+    items.push(Line::from(""));
+    
+    if app.hero_definitions.is_empty() {
+        items.push(Line::from(Span::styled(
+            "No hero definitions available",
+            Style::default().fg(Color::Red),
+        )));
+    } else {
+        let definitions: Vec<&String> = app.hero_definitions.keys().collect();
+        for (idx, def_name) in definitions.iter().enumerate() {
+            let number = idx + 1; // Display 1-based numbers
+            let definition = app.hero_definitions.get(*def_name).unwrap();
+            items.push(Line::from(vec![
+                Span::styled(
+                    format!("[{}] ", number),
+                    Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    format!("{} (max stamina: {})", def_name, definition.max_stamina),
+                    Style::default().fg(Color::White),
+                ),
+            ]));
+        }
+    }
+    
+    items.push(Line::from(""));
+    items.push(Line::from(Span::styled(
+        "Press 'x' to cancel",
+        Style::default().fg(Color::Yellow),
+    )));
+    
+    Paragraph::new(items)
+        .block(Block::default().borders(Borders::ALL).title("Hero Definitions"))
+        .wrap(Wrap { trim: true })
+}

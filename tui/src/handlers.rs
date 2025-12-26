@@ -1,7 +1,42 @@
 use crossterm::event::KeyCode;
-use odsr_engine::{CombatParameters, CombatState, TurnSide};
+use odsr_engine::{CombatParameters, CombatState, TurnSide, Entity};
 use odsr_engine::dice::rolld10s;
 use crate::app::{App, CombatMode, InputMode, TextInput, TextInputType};
+
+/// Counts how many entities exist with the given definition name
+fn count_instances_of_definition(app: &App, definition_name: &String) -> usize {
+    app.entities
+        .values()
+        .filter(|entity| entity.definition_name() == definition_name)
+        .count()
+}
+
+/// Generates a default name for an entity based on definition name and instance count
+fn generate_default_entity_name(definition_name: &String, instance_count: usize) -> String {
+    format!("{} {}", definition_name, instance_count + 1)
+}
+
+/// Ensures an entity instance exists with the given instance name, using the specified definition.
+/// Requires definition_name to be provided - no ad-hoc definitions are created.
+/// Creates the entity instance if it doesn't exist.
+fn ensure_entity_exists(app: &mut App, instance_name: &String, definition_name: &String, is_hero: bool) {
+    // Get the definition from the appropriate map
+    let definition = if is_hero {
+        app.hero_definitions.get(definition_name)
+            .expect("Hero definition must exist")
+            .clone()
+    } else {
+        app.monster_definitions.get(definition_name)
+            .expect("Monster definition must exist")
+            .clone()
+    };
+    
+    // Create entity instance if it doesn't exist
+    if !app.entities.contains_key(instance_name) {
+        let entity = Entity::new(instance_name.clone(), definition);
+        app.entities.insert(instance_name.clone(), entity);
+    }
+}
 
 pub fn handle_creation_input(app: &mut App, key: KeyCode) -> bool {
     match key {
@@ -10,22 +45,22 @@ pub fn handle_creation_input(app: &mut App, key: KeyCode) -> bool {
             create_combat(app);
         }
         KeyCode::Char('b') => {
-            // Enter text input mode for NPC name
-            app.input_mode = InputMode::TextInput;
-            app.text_input = Some(TextInput {
-                buffer: String::new(),
-                input_type: TextInputType::NPCName,
-            });
-            app.message = "Enter NPC name (press Enter to confirm, Esc to cancel):".to_string();
+            // Enter monster definition selection mode for NPC
+            if app.monster_definitions.is_empty() {
+                app.message = "No monster definitions available. Add some to content/monsters/ first.".to_string();
+            } else {
+                app.input_mode = InputMode::SelectingMonsterDefinition;
+                app.message = "Select monster definition (press number, or 'x' to cancel):".to_string();
+            }
         }
         KeyCode::Char('p') => {
-            // Enter text input mode for PC name
-            app.input_mode = InputMode::TextInput;
-            app.text_input = Some(TextInput {
-                buffer: String::new(),
-                input_type: TextInputType::PCName,
-            });
-            app.message = "Enter PC name (press Enter to confirm, Esc to cancel):".to_string();
+            // Enter hero definition selection mode for PC
+            if app.hero_definitions.is_empty() {
+                app.message = "No hero definitions available. Add some to content/heroes/ first.".to_string();
+            } else {
+                app.input_mode = InputMode::SelectingHeroDefinition;
+                app.message = "Select hero definition (press number, or 'x' to cancel):".to_string();
+            }
         }
         KeyCode::Char('x') => {
             // Enter removal mode during setup
@@ -45,6 +80,8 @@ pub fn handle_text_input(app: &mut App, key: KeyCode) -> bool {
             KeyCode::Enter => {
                 // Submit the name
                 let name = text_input.buffer.trim().to_string();
+                let input_type = text_input.input_type;
+                
                 if name.is_empty() {
                     // Cancel input if empty or only whitespace
                     app.text_input = None;
@@ -58,10 +95,24 @@ pub fn handle_text_input(app: &mut App, key: KeyCode) -> bool {
                     return false;
                 }
                 
+                // Extract selected definition before borrowing app mutably
+                let selected_def = text_input.selected_definition.clone()
+                    .expect("Definition must be selected");
+                
+                // Ensure entity exists before checking combat state
+                match input_type {
+                    TextInputType::NPCName => {
+                        ensure_entity_exists(app, &name, &selected_def, false); // false = monster
+                    }
+                    TextInputType::PCName => {
+                        ensure_entity_exists(app, &name, &selected_def, true); // true = hero
+                    }
+                }
+
                 match app.state {
                     Some(CombatMode::Setup(ref mut params)) => {
                         // Adding during setup
-                        match text_input.input_type {
+                        match input_type {
                             TextInputType::NPCName => {
                                 if params.npcs().contains(&name) {
                                     app.message = format!("NPC '{}' already added", name);
@@ -83,7 +134,7 @@ pub fn handle_text_input(app: &mut App, key: KeyCode) -> bool {
                     }
                     Some(CombatMode::Active(ref state)) => {
                         // Adding/removing during combat
-                        match text_input.input_type {
+                        match input_type {
                             TextInputType::NPCName => {
                                 match state.add_npc(name.clone()) {
                                     Ok(new_state) => {
@@ -145,25 +196,25 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
     match key {
         KeyCode::Char('q') => return true,
         KeyCode::Char('b') => {
-            // Enter text input mode for NPC name (during combat)
+            // Enter monster definition selection mode for NPC (during combat)
             if let Some(CombatMode::Active(_)) = app.state {
-                app.input_mode = InputMode::TextInput;
-                app.text_input = Some(TextInput {
-                    buffer: String::new(),
-                    input_type: TextInputType::NPCName,
-                });
-                app.message = "Enter NPC name to add (press Enter to confirm, Esc to cancel):".to_string();
+                if app.monster_definitions.is_empty() {
+                    app.message = "No monster definitions available. Add some to content/monsters/ first.".to_string();
+                } else {
+                    app.input_mode = InputMode::SelectingMonsterDefinition;
+                    app.message = "Select monster definition (press number, or 'x' to cancel):".to_string();
+                }
             }
         }
-        KeyCode::Char('p') => {
-            // Enter text input mode for PC name (during combat)
+            KeyCode::Char('p') => {
+            // Enter hero definition selection mode for PC (during combat)
             if let Some(CombatMode::Active(_)) = app.state {
-                app.input_mode = InputMode::TextInput;
-                app.text_input = Some(TextInput {
-                    buffer: String::new(),
-                    input_type: TextInputType::PCName,
-                });
-                app.message = "Enter PC name to add (press Enter to confirm, Esc to cancel):".to_string();
+                if app.hero_definitions.is_empty() {
+                    app.message = "No hero definitions available. Add some to content/heroes/ first.".to_string();
+                } else {
+                    app.input_mode = InputMode::SelectingHeroDefinition;
+                    app.message = "Select hero definition (press number, or 'x' to cancel):".to_string();
+                }
             }
         }
         KeyCode::Char('x') => {
@@ -378,3 +429,84 @@ pub fn handle_removal_input(app: &mut App, key: KeyCode) -> bool {
     false
 }
 
+pub fn handle_monster_selection(app: &mut App, key: KeyCode) -> bool {
+    match key {
+        KeyCode::Char('q') => return true,
+        KeyCode::Char('x') => {
+            // Cancel selection - return to creation mode
+            app.input_mode = match app.state {
+                Some(CombatMode::Setup(_)) => InputMode::CreatingCombat,
+                Some(CombatMode::Active(_)) => InputMode::TakingTurn,
+                None => InputMode::CreatingCombat,
+            };
+            app.message = "Monster selection cancelled".to_string();
+        }
+        KeyCode::Char(c) => {
+            // Check if it's a digit (1-9)
+            if let Some(digit) = c.to_digit(10) {
+                let definitions: Vec<&String> = app.monster_definitions.keys().collect();
+                let index = (digit as usize).saturating_sub(1); // Convert 1-9 to 0-8
+                
+                if index < definitions.len() {
+                    let definition_name = definitions[index].clone();
+                    let instance_count = count_instances_of_definition(app, &definition_name);
+                    let default_name = generate_default_entity_name(&definition_name, instance_count);
+                    
+                    // Enter text input mode with pre-filled name
+                    app.input_mode = InputMode::TextInput;
+                    app.text_input = Some(TextInput {
+                        buffer: default_name.clone(),
+                        input_type: TextInputType::NPCName,
+                        selected_definition: Some(definition_name),
+                    });
+                    app.message = "Enter NPC name (press Enter to confirm, Esc to cancel):".to_string();
+                } else {
+                    app.message = format!("No monster definition at position {}", digit);
+                }
+            }
+        }
+        _ => {}
+    }
+    false
+}
+
+pub fn handle_hero_selection(app: &mut App, key: KeyCode) -> bool {
+    match key {
+        KeyCode::Char('q') => return true,
+        KeyCode::Char('x') => {
+            // Cancel selection - return to creation mode
+            app.input_mode = match app.state {
+                Some(CombatMode::Setup(_)) => InputMode::CreatingCombat,
+                Some(CombatMode::Active(_)) => InputMode::TakingTurn,
+                None => InputMode::CreatingCombat,
+            };
+            app.message = "Hero selection cancelled".to_string();
+        }
+        KeyCode::Char(c) => {
+            // Check if it's a digit (1-9)
+            if let Some(digit) = c.to_digit(10) {
+                let definitions: Vec<&String> = app.hero_definitions.keys().collect();
+                let index = (digit as usize).saturating_sub(1); // Convert 1-9 to 0-8
+                
+                if index < definitions.len() {
+                    let definition_name = definitions[index].clone();
+                    let instance_count = count_instances_of_definition(app, &definition_name);
+                    let default_name = generate_default_entity_name(&definition_name, instance_count);
+                    
+                    // Enter text input mode with pre-filled name
+                    app.input_mode = InputMode::TextInput;
+                    app.text_input = Some(TextInput {
+                        buffer: default_name.clone(),
+                        input_type: TextInputType::PCName,
+                        selected_definition: Some(definition_name),
+                    });
+                    app.message = "Enter PC name (press Enter to confirm, Esc to cancel):".to_string();
+                } else {
+                    app.message = format!("No hero definition at position {}", digit);
+                }
+            }
+        }
+        _ => {}
+    }
+    false
+}

@@ -2,11 +2,13 @@ pub mod combat;
 pub mod dice;
 pub mod npc;
 pub mod pc;
+pub mod entity;
 
 pub use combat::{CombatParameters, CombatState, TurnSide};
 pub use dice::{rolld3s, rolld10s, power_roll};
 pub use npc::NPC;
 pub use pc::PC;
+pub use entity::{Entity, EntityDefinition};
 
 #[cfg(test)]
 mod tests {
