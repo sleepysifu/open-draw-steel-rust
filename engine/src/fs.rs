@@ -20,7 +20,11 @@ pub fn load_set<T>(dir: &Path) -> Result<IndexMap<String, T>, String> where T: D
             Ok(e) => e,
             Err(_) => continue,
         };
-        let file_name = entry.file_name().to_string_lossy().to_string();
+        let file_name_with_ext = entry.file_name().to_string_lossy().to_string();
+        let file_name = file_name_with_ext
+            .strip_suffix(".json")
+            .unwrap_or(&file_name_with_ext)
+            .to_string();
         
         let path = entry.path();
         if path.extension().and_then(|s| s.to_str()) != Some("json") {

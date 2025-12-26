@@ -125,6 +125,82 @@ pub fn render_all_entities(state: &CombatState) -> Paragraph<'static> {
         .wrap(Wrap { trim: true })
 }
 
+pub fn render_all_entities_for_target(state: &CombatState) -> Paragraph<'static> {
+    let all_pcs = state.all_pcs();
+    let all_npcs = state.all_npcs();
+    let current_turn = state.current_turn();
+    
+    let mut items: Vec<Line> = vec![Line::from(Span::styled(
+        "Select target:",
+        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+    ))];
+    
+    items.push(Line::from(""));
+    items.push(Line::from(Span::styled(
+        "PCs:",
+        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+    )));
+    
+    let mut entity_index = 0;
+    let pc_vec: Vec<&String> = all_pcs.iter().collect();
+    for pc in &pc_vec {
+        entity_index += 1;
+        let style = if let Some((TurnSide::PC, name)) = current_turn {
+            if name == *pc {
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::White)
+            }
+        } else {
+            Style::default().fg(Color::White)
+        };
+        items.push(Line::from(vec![
+            Span::styled(
+                format!("[{}] ", entity_index),
+                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled((*pc).clone(), style),
+        ]));
+    }
+    
+    items.push(Line::from(""));
+    items.push(Line::from(Span::styled(
+        "NPCs:",
+        Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+    )));
+    
+    let npc_vec: Vec<&String> = all_npcs.iter().collect();
+    for npc in &npc_vec {
+        entity_index += 1;
+        let style = if let Some((TurnSide::NPC, name)) = current_turn {
+            if name == *npc {
+                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(Color::White)
+            }
+        } else {
+            Style::default().fg(Color::White)
+        };
+        items.push(Line::from(vec![
+            Span::styled(
+                format!("[{}] ", entity_index),
+                Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled((*npc).clone(), style),
+        ]));
+    }
+    
+    items.push(Line::from(""));
+    items.push(Line::from(Span::styled(
+        "Press 'x' to cancel",
+        Style::default().fg(Color::Yellow),
+    )));
+    
+    Paragraph::new(items)
+        .block(Block::default().borders(Borders::ALL).title("Select Target"))
+        .wrap(Wrap { trim: true })
+}
+
 pub fn render_all_entities_setup(params: &CombatParameters) -> Paragraph<'static> {
     let all_pcs = params.pcs();
     let all_npcs = params.npcs();

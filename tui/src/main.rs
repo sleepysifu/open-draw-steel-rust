@@ -13,7 +13,7 @@ use ratatui::{
     Terminal,
 };
 use app::{App, InputMode};
-use handlers::{handle_creation_input, handle_turn_input, handle_text_input, handle_removal_input, handle_monster_selection, handle_hero_selection};
+use handlers::{handle_creation_input, handle_turn_input, handle_text_input, handle_removal_input, handle_monster_selection, handle_hero_selection, handle_ability_selection, handle_target_selection};
 
 fn main() -> io::Result<()> {
     // Setup terminal
@@ -80,6 +80,12 @@ fn run(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<(), String> 
                     }
                     InputMode::SelectingHeroDefinition => {
                         should_quit = handle_hero_selection(&mut app, key.code);
+                    }
+                    InputMode::SelectingAbility => {
+                        should_quit = handle_ability_selection(&mut app, key.code);
+                    }
+                    InputMode::SelectingTarget => {
+                        should_quit = handle_target_selection(&mut app, key.code);
                     }
                 }
             }

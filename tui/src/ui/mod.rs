@@ -60,6 +60,9 @@ pub fn render_ui(f: &mut Frame, app: &App) {
         (Some(CombatMode::Active(state)), InputMode::RemovingEntity) => {
             entities::render_all_entities(state)
         }
+        (Some(CombatMode::Active(state)), InputMode::SelectingTarget) => {
+            entities::render_all_entities_for_target(state)
+        }
         (Some(CombatMode::Active(state)), _) => {
             // If a turn is in progress, show abilities; otherwise show available entities
             if state.current_turn().is_some() {

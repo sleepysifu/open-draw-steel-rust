@@ -242,10 +242,27 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
                 match state.end_turn() {
                     Ok(new_state) => {
                         app.state = Some(CombatMode::Active(new_state));
+                        app.selected_ability = None; // Clear selected ability
                         app.log("Turn ended".to_string());
                     }
                     Err(e) => {
                         app.log(format!("Error: {}", e));
+                    }
+                }
+            }
+        }
+        KeyCode::Char('a') => {
+            // Enter ability selection mode
+            if let Some(CombatMode::Active(ref state)) = app.state {
+                if let Some((_side, entity_name)) = state.current_turn() {
+                    if let Some(entity) = app.entities.get(entity_name) {
+                        let ability_names = &entity.definition().abilities;
+                        if ability_names.is_empty() {
+                            app.log("No abilities available for this entity.".to_string());
+                        } else {
+                            app.input_mode = InputMode::SelectingAbility;
+                            app.log("Select ability (press number, or 'x' to cancel):".to_string());
+                        }
                     }
                 }
             }
@@ -509,4 +526,99 @@ pub fn handle_hero_selection(app: &mut App, key: KeyCode) -> bool {
         _ => {}
     }
     false
+}
+
+pub fn handle_ability_selection(app: &mut App, key: KeyCode) -> bool {
+    match key {
+        KeyCode::Char('q') => return true,
+        KeyCode::Char('x') => {
+            // Cancel ability selection - return to turn mode
+            app.input_mode = InputMode::TakingTurn;
+            app.selected_ability = None;
+            app.log("Ability selection cancelled".to_string());
+        }
+        KeyCode::Char(c) => {
+            // Check if it's a digit (1-9)
+            if let Some(digit) = c.to_digit(10) {
+                if let Some(CombatMode::Active(ref state)) = app.state {
+                    if let Some((_side, entity_name)) = state.current_turn() {
+                        if let Some(entity) = app.entities.get(entity_name) {
+                            let ability_names: Vec<&String> = entity.definition().abilities.iter().collect();
+                            let index = (digit as usize).saturating_sub(1); // Convert 1-9 to 0-8
+                            
+                            if index < ability_names.len() {
+                                let ability_name = ability_names[index].clone();
+                                // Verify ability exists
+                                if app.definitions.abilities.contains_key(&ability_name) {
+                                    app.selected_ability = Some(ability_name.clone());
+                                    app.input_mode = InputMode::SelectingTarget;
+                                    app.log(format!("Selected ability: {}. Select target (press number, or 'x' to cancel):", ability_name));
+                                } else {
+                                    app.log(format!("Ability '{}' not found in definitions", ability_name));
+                                }
+                            } else {
+                                app.log(format!("No ability at position {}", digit));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+    false
+}
+
+pub fn handle_target_selection(app: &mut App, key: KeyCode) -> bool {
+    match key {
+        KeyCode::Char('q') => return true,
+        KeyCode::Char('x') => {
+            // Cancel target selection - return to ability selection
+            app.input_mode = InputMode::SelectingAbility;
+            app.log("Target selection cancelled. Select ability (press number, or 'x' to cancel):".to_string());
+        }
+        KeyCode::Char(c) => {
+            // Check if it's a digit (1-9)
+            if let Some(digit) = c.to_digit(10) {
+                if let Some(CombatMode::Active(ref state)) = app.state {
+                    // Get all entities in combat (PCs and NPCs)
+                    let all_pcs: Vec<&String> = state.all_pcs().iter().collect();
+                    let all_npcs: Vec<&String> = state.all_npcs().iter().collect();
+                    let mut all_entities: Vec<&String> = Vec::new();
+                    
+                    for pc in all_pcs {
+                        all_entities.push(pc);
+                    }
+                    for npc in all_npcs {
+                        all_entities.push(npc);
+                    }
+                    
+                    let index = (digit as usize).saturating_sub(1); // Convert 1-9 to 0-8
+                    
+                    if index < all_entities.len() {
+                        let target_name = all_entities[index].clone();
+                        
+                        // Execute ability (stub)
+                        if let Some(ability_name) = app.selected_ability.clone() {
+                            execute_ability(app, &ability_name, &target_name);
+                        }
+                    } else {
+                        app.log(format!("No entity at position {}", digit));
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+    false
+}
+
+fn execute_ability(app: &mut App, ability_name: &str, target_name: &str) {
+    // Stub: Just log the execution
+    app.log(format!("Executing ability '{}' on target '{}' (stub)", ability_name, target_name));
+    
+    // After execution, return to turn mode
+    app.input_mode = InputMode::TakingTurn;
+    app.selected_ability = None;
+    app.log("Ability executed. Press 'e' to end turn, or 'a' to use another ability.".to_string());
 }

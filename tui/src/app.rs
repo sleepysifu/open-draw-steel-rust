@@ -41,6 +41,7 @@ pub struct App {
     pub log_view_expanded: bool,
     pub input_mode: InputMode,
     pub text_input: Option<TextInput>,
+    pub selected_ability: Option<String>, // Ability name selected for use
 }
 
 pub enum InputMode {
@@ -50,6 +51,8 @@ pub enum InputMode {
     RemovingEntity,
     SelectingHeroDefinition,
     SelectingMonsterDefinition,
+    SelectingAbility,
+    SelectingTarget,
 }
 
 #[derive(Copy, Clone)]
@@ -103,6 +106,7 @@ impl App {
             log_view_expanded: false,
             input_mode: InputMode::CreatingCombat,
             text_input: None,
+            selected_ability: None,
         };
         
         Ok(app)
