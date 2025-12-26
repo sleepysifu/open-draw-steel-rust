@@ -23,7 +23,13 @@ fn main() -> io::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App::default();
+    let mut app = match App::new() {
+        Ok(app) => app,
+        Err(e) => {
+            eprintln!("Error creating app: {}", e);
+            return Err(io::Error::new(io::ErrorKind::Other, e));
+        }
+    };
     let mut should_quit = false;
 
     while !should_quit {
@@ -31,6 +37,12 @@ fn main() -> io::Result<()> {
 
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
+                // Handle log view toggle (works in any mode)
+                if let crossterm::event::KeyCode::Char('`') = key.code {
+                    app.log_view_expanded = !app.log_view_expanded;
+                    continue;
+                }
+                
                 match app.input_mode {
                     InputMode::CreatingCombat => {
                         should_quit = handle_creation_input(&mut app, key.code);

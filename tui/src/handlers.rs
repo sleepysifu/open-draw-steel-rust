@@ -47,26 +47,26 @@ pub fn handle_creation_input(app: &mut App, key: KeyCode) -> bool {
         KeyCode::Char('b') => {
             // Enter monster definition selection mode for NPC
             if app.monster_definitions.is_empty() {
-                app.message = "No monster definitions available. Add some to content/monsters/ first.".to_string();
+                app.log("No monster definitions available. Add some to content/monsters/ first.".to_string());
             } else {
                 app.input_mode = InputMode::SelectingMonsterDefinition;
-                app.message = "Select monster definition (press number, or 'x' to cancel):".to_string();
+                app.log("Select monster definition (press number, or 'x' to cancel):".to_string());
             }
         }
         KeyCode::Char('p') => {
             // Enter hero definition selection mode for PC
             if app.hero_definitions.is_empty() {
-                app.message = "No hero definitions available. Add some to content/heroes/ first.".to_string();
+                app.log("No hero definitions available. Add some to content/heroes/ first.".to_string());
             } else {
                 app.input_mode = InputMode::SelectingHeroDefinition;
-                app.message = "Select hero definition (press number, or 'x' to cancel):".to_string();
+                app.log("Select hero definition (press number, or 'x' to cancel):".to_string());
             }
         }
         KeyCode::Char('x') => {
             // Enter removal mode during setup
             if let Some(CombatMode::Setup(_)) = app.state {
                 app.input_mode = InputMode::RemovingEntity;
-                app.message = "Select entity to remove (press number, or 'x' to cancel):".to_string();
+                app.log("Select entity to remove (press number, or 'x' to cancel):".to_string());
             }
         }
         _ => {}
@@ -91,7 +91,7 @@ pub fn handle_text_input(app: &mut App, key: KeyCode) -> bool {
                         Some(CombatMode::Active(_)) => InputMode::TakingTurn,
                         None => InputMode::CreatingCombat,
                     };
-                    app.message = "Input cancelled".to_string();
+                    app.log("Input cancelled".to_string());
                     return false;
                 }
                 
@@ -115,18 +115,18 @@ pub fn handle_text_input(app: &mut App, key: KeyCode) -> bool {
                         match input_type {
                             TextInputType::NPCName => {
                                 if params.npcs().contains(&name) {
-                                    app.message = format!("NPC '{}' already added", name);
+                                    app.log(format!("NPC '{}' already added", name));
                                 } else {
                                     params.add_npc(name.clone());
-                                    app.message = format!("Added NPC: {}", name);
+                                    app.log(format!("Added NPC: {}", name));
                                 }
                             }
                             TextInputType::PCName => {
                                 if params.pcs().contains(&name) {
-                                    app.message = format!("PC '{}' already added", name);
+                                    app.log(format!("PC '{}' already added", name));
                                 } else {
                                     params.add_pc(name.clone());
-                                    app.message = format!("Added PC: {}", name);
+                                    app.log(format!("Added PC: {}", name));
                                 }
                             }
                         }
@@ -139,10 +139,10 @@ pub fn handle_text_input(app: &mut App, key: KeyCode) -> bool {
                                 match state.add_npc(name.clone()) {
                                     Ok(new_state) => {
                                         app.state = Some(CombatMode::Active(new_state));
-                                        app.message = format!("Added NPC: {} (reinforcement)", name);
+                                        app.log(format!("Added NPC: {} (reinforcement)", name));
                                     }
                                     Err(e) => {
-                                        app.message = format!("Error: {}", e);
+                                        app.log(format!("Error: {}", e));
                                     }
                                 }
                             }
@@ -150,10 +150,10 @@ pub fn handle_text_input(app: &mut App, key: KeyCode) -> bool {
                                 match state.add_pc(name.clone()) {
                                     Ok(new_state) => {
                                         app.state = Some(CombatMode::Active(new_state));
-                                        app.message = format!("Added PC: {} (reinforcement)", name);
+                                        app.log(format!("Added PC: {} (reinforcement)", name));
                                     }
                                     Err(e) => {
-                                        app.message = format!("Error: {}", e);
+                                        app.log(format!("Error: {}", e));
                                     }
                                 }
                             }
@@ -161,7 +161,7 @@ pub fn handle_text_input(app: &mut App, key: KeyCode) -> bool {
                         app.input_mode = InputMode::TakingTurn;
                     }
                     None => {
-                        app.message = "No combat state available".to_string();
+                        app.log("No combat state available".to_string());
                         app.input_mode = InputMode::CreatingCombat;
                     }
                 }
@@ -178,7 +178,7 @@ pub fn handle_text_input(app: &mut App, key: KeyCode) -> bool {
                     Some(CombatMode::Active(_)) => InputMode::TakingTurn,
                     None => InputMode::CreatingCombat,
                 };
-                app.message = "Input cancelled".to_string();
+                app.log("Input cancelled".to_string());
             }
             KeyCode::Backspace => {
                 text_input.buffer.pop();
@@ -199,10 +199,10 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
             // Enter monster definition selection mode for NPC (during combat)
             if let Some(CombatMode::Active(_)) = app.state {
                 if app.monster_definitions.is_empty() {
-                    app.message = "No monster definitions available. Add some to content/monsters/ first.".to_string();
+                    app.log("No monster definitions available. Add some to content/monsters/ first.".to_string());
                 } else {
                     app.input_mode = InputMode::SelectingMonsterDefinition;
-                    app.message = "Select monster definition (press number, or 'x' to cancel):".to_string();
+                    app.log("Select monster definition (press number, or 'x' to cancel):".to_string());
                 }
             }
         }
@@ -210,18 +210,18 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
             // Enter hero definition selection mode for PC (during combat)
             if let Some(CombatMode::Active(_)) = app.state {
                 if app.hero_definitions.is_empty() {
-                    app.message = "No hero definitions available. Add some to content/heroes/ first.".to_string();
+                    app.log("No hero definitions available. Add some to content/heroes/ first.".to_string());
                 } else {
                     app.input_mode = InputMode::SelectingHeroDefinition;
-                    app.message = "Select hero definition (press number, or 'x' to cancel):".to_string();
+                    app.log("Select hero definition (press number, or 'x' to cancel):".to_string());
                 }
             }
         }
         KeyCode::Char('x') => {
             // Enter removal mode
             if let Some(CombatMode::Active(_)) = app.state {
-                app.input_mode = InputMode::RemovingEntity;
-                app.message = "Select entity to remove (press number, or 'x' to cancel):".to_string();
+                    app.input_mode = InputMode::RemovingEntity;
+                    app.log("Select entity to remove (press number, or 'x' to cancel):".to_string());
             }
         }
         KeyCode::Char('r') => {
@@ -230,11 +230,11 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
                 app.state = match new_state {
                     Ok(new_state) => Some(CombatMode::Active(new_state)),
                     Err(e) => {
-                        app.message = format!("Error: {}", e);
+                        app.log(format!("Error: {}", e));
                         return false;
                     }
                 };
-                app.message = "Round completed!".to_string();
+                app.log("Round completed!".to_string());
             }
         }
         KeyCode::Char('e') => {
@@ -242,10 +242,10 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
                 match state.end_turn() {
                     Ok(new_state) => {
                         app.state = Some(CombatMode::Active(new_state));
-                        app.message = "Turn ended".to_string();
+                        app.log("Turn ended".to_string());
                     }
                     Err(e) => {
-                        app.message = format!("Error: {}", e);
+                        app.log(format!("Error: {}", e));
                     }
                 }
             }
@@ -255,10 +255,10 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
                 match state.cancel_turn() {
                     Ok(new_state) => {
                         app.state = Some(CombatMode::Active(new_state));
-                        app.message = "Turn cancelled".to_string();
+                        app.log("Turn cancelled".to_string());
                     }
                     Err(e) => {
-                        app.message = format!("Error: {}", e);
+                        app.log(format!("Error: {}", e));
                     }
                 }
             }
@@ -277,14 +277,14 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
                         match state.start_turn(side, entity.clone()) {
                             Ok(new_state) => {
                                 app.state = Some(CombatMode::Active(new_state));
-                                app.message = format!("{} started their turn", entity);
+                                app.log(format!("{} started their turn", entity));
                             }
                             Err(e) => {
-                                app.message = format!("Error: {}", e);
+                                app.log(format!("Error: {}", e));
                             }
                         }
                     } else {
-                        app.message = format!("No entity at position {}", digit);
+                        app.log(format!("No entity at position {}", digit));
                     }
                 }
             }
@@ -298,13 +298,13 @@ pub fn create_combat(app: &mut App) {
     let combat_params = match &app.state {
         Some(CombatMode::Setup(params)) => params,
         _ => {
-            app.message = "combat setup not found!".to_string();
+            app.log("combat setup not found!".to_string());
             return;
         }
     };
     
     if combat_params.pcs().is_empty() || combat_params.npcs().is_empty() {
-        app.message = "Please add at least one PC and one NPC first!".to_string();
+        app.log("Please add at least one PC and one NPC first!".to_string());
         return;
     }
 
@@ -324,10 +324,10 @@ pub fn create_combat(app: &mut App) {
 
     app.state = Some(CombatMode::Active(CombatState::new(combat_parameters)));
     app.input_mode = InputMode::TakingTurn;
-    app.message = format!(
+    app.log(format!(
         "combat created! Starting side: {:?} (rolled {})",
         starting_side, starting_roll
-    );
+    ));
 }
 
 pub fn handle_removal_input(app: &mut App, key: KeyCode) -> bool {
@@ -340,7 +340,7 @@ pub fn handle_removal_input(app: &mut App, key: KeyCode) -> bool {
                 Some(CombatMode::Active(_)) => InputMode::TakingTurn,
                 None => InputMode::CreatingCombat,
             };
-            app.message = "Removal cancelled".to_string();
+            app.log("Removal cancelled".to_string());
         }
         KeyCode::Char(c) => {
             // Check if it's a digit (1-9)
@@ -371,13 +371,13 @@ pub fn handle_removal_input(app: &mut App, key: KeyCode) -> bool {
                             
                             if removed {
                                 let entity_type = if *is_pc { "PC" } else { "NPC" };
-                                app.message = format!("Removed {}: {}", entity_type, entity_name);
+                                app.log(format!("Removed {}: {}", entity_type, entity_name));
                                 app.input_mode = InputMode::CreatingCombat;
                             } else {
-                                app.message = format!("Entity '{}' not found", entity_name);
+                                app.log(format!("Entity '{}' not found", entity_name));
                             }
                         } else {
-                            app.message = format!("No entity at position {}", digit);
+                            app.log(format!("No entity at position {}", digit));
                         }
                     }
                     Some(CombatMode::Active(ref state)) => {
@@ -407,19 +407,19 @@ pub fn handle_removal_input(app: &mut App, key: KeyCode) -> bool {
                                 Ok(new_state) => {
                                     app.state = Some(CombatMode::Active(new_state));
                                     let entity_type = if *is_pc { "PC" } else { "NPC" };
-                                    app.message = format!("Removed {}: {} (death)", entity_type, entity_name);
+                                    app.log(format!("Removed {}: {} (death)", entity_type, entity_name));
                                     app.input_mode = InputMode::TakingTurn;
                                 }
                                 Err(e) => {
-                                    app.message = format!("Error: {}", e);
+                                    app.log(format!("Error: {}", e));
                                 }
                             }
                         } else {
-                            app.message = format!("No entity at position {}", digit);
+                            app.log(format!("No entity at position {}", digit));
                         }
                     }
                     None => {
-                        app.message = "No combat state available".to_string();
+                        app.log("No combat state available".to_string());
                     }
                 }
             }
@@ -439,7 +439,7 @@ pub fn handle_monster_selection(app: &mut App, key: KeyCode) -> bool {
                 Some(CombatMode::Active(_)) => InputMode::TakingTurn,
                 None => InputMode::CreatingCombat,
             };
-            app.message = "Monster selection cancelled".to_string();
+            app.log("Monster selection cancelled".to_string());
         }
         KeyCode::Char(c) => {
             // Check if it's a digit (1-9)
@@ -459,9 +459,9 @@ pub fn handle_monster_selection(app: &mut App, key: KeyCode) -> bool {
                         input_type: TextInputType::NPCName,
                         selected_definition: Some(definition_name),
                     });
-                    app.message = "Enter NPC name (press Enter to confirm, Esc to cancel):".to_string();
+                    app.log("Enter NPC name (press Enter to confirm, Esc to cancel):".to_string());
                 } else {
-                    app.message = format!("No monster definition at position {}", digit);
+                    app.log(format!("No monster definition at position {}", digit));
                 }
             }
         }
@@ -480,7 +480,7 @@ pub fn handle_hero_selection(app: &mut App, key: KeyCode) -> bool {
                 Some(CombatMode::Active(_)) => InputMode::TakingTurn,
                 None => InputMode::CreatingCombat,
             };
-            app.message = "Hero selection cancelled".to_string();
+            app.log("Hero selection cancelled".to_string());
         }
         KeyCode::Char(c) => {
             // Check if it's a digit (1-9)
@@ -500,9 +500,9 @@ pub fn handle_hero_selection(app: &mut App, key: KeyCode) -> bool {
                         input_type: TextInputType::PCName,
                         selected_definition: Some(definition_name),
                     });
-                    app.message = "Enter PC name (press Enter to confirm, Esc to cancel):".to_string();
+                    app.log("Enter PC name (press Enter to confirm, Esc to cancel):".to_string());
                 } else {
-                    app.message = format!("No hero definition at position {}", digit);
+                    app.log(format!("No hero definition at position {}", digit));
                 }
             }
         }

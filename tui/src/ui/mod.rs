@@ -14,6 +14,14 @@ use ratatui::{
 use crate::{app::{App, CombatMode, InputMode}, ui::entities::{render_all_entities_setup}};
 
 pub fn render_ui(f: &mut Frame, app: &App) {
+    // If log view is expanded, show it as an overlay
+    if app.log_view_expanded {
+        let log_area = f.size();
+        let log_widget = status::render_log_view(app);
+        f.render_widget(log_widget, log_area);
+        return;
+    }
+    
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([

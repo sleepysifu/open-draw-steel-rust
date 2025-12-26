@@ -1,4 +1,5 @@
 {
     "name":"Goblin",
-    "max_stamina":10
+    "max_stamina":10,
+    "abilities": ["melee_free_strike", "ranged_free_strike"]
 }
