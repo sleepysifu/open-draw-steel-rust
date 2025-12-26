@@ -32,7 +32,9 @@ pub fn render_combat_state(state: &CombatState) -> Paragraph<'static> {
     ];
 
     // Show current turn in progress
-    if let Some((side, name)) = current_turn {
+    if let Some(turn) = current_turn {
+        let side = turn.side;
+        let name = &turn.entity_name;
         text.push(Line::from(vec![
             Span::styled("Turn in progress: ", Style::default().fg(Color::White)),
             Span::styled(
@@ -58,8 +60,8 @@ pub fn render_combat_state(state: &CombatState) -> Paragraph<'static> {
     let mut pc_vec: Vec<&String> = all_pcs.iter().collect();
     pc_vec.sort();
     for pc in pc_vec {
-        let style = if let Some((TurnSide::PC, name)) = current_turn {
-            if name == pc {
+        let style = if let Some(turn) = current_turn {
+            if turn.side == TurnSide::PC && &turn.entity_name == pc {
                 Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
             } else if pc_taken.contains(pc) {
                 Style::default().fg(Color::DarkGray)
@@ -86,8 +88,8 @@ pub fn render_combat_state(state: &CombatState) -> Paragraph<'static> {
     let mut npc_vec: Vec<&String> = all_npcs.iter().collect();
     npc_vec.sort();
     for npc in npc_vec {
-        let style = if let Some((TurnSide::NPC, name)) = current_turn {
-            if name == npc {
+        let style = if let Some(turn) = current_turn {
+            if turn.side == TurnSide::NPC && &turn.entity_name == npc {
                 Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
             } else if npc_taken.contains(npc) {
                 Style::default().fg(Color::DarkGray)

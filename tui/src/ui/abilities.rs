@@ -19,7 +19,8 @@ pub fn render_abilities(state: &CombatState, app: &App) -> Paragraph<'static> {
     }
     let current_turn = state.current_turn();
     
-    if let Some((_side, entity_name)) = current_turn {
+    if let Some(turn) = current_turn {
+        let entity_name = &turn.entity_name;
         let entity = match app.entities.get(entity_name){
             Some(entity) => entity,
             None => {
@@ -47,10 +48,6 @@ pub fn render_abilities(state: &CombatState, app: &App) -> Paragraph<'static> {
                 let number = idx + 1;
                 if let Some(ability) = app.definitions.abilities.get(ability_name) {
                     text.push(Line::from(vec![
-                        Span::styled(
-                            format!("[{}] ", number),
-                            Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
-                        ),
                         Span::styled(
                             format!("{}", ability.name),
                             Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
@@ -89,7 +86,8 @@ pub fn render_abilities(state: &CombatState, app: &App) -> Paragraph<'static> {
 fn render_ability_selection(state: &CombatState, app: &App) -> Paragraph<'static> {
     let current_turn = state.current_turn();
     
-    if let Some((_side, entity_name)) = current_turn {
+    if let Some(turn) = current_turn {
+        let entity_name = &turn.entity_name;
         let entity = match app.entities.get(entity_name){
             Some(entity) => entity,
             None => {

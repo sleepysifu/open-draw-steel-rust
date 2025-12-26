@@ -69,8 +69,8 @@ pub fn render_all_entities(state: &CombatState) -> Paragraph<'static> {
     let pc_vec: Vec<&String> = all_pcs.iter().collect();
     for pc in &pc_vec {
         entity_index += 1;
-        let style = if let Some((TurnSide::PC, name)) = current_turn {
-            if name == *pc {
+        let style = if let Some(turn) = current_turn {
+            if turn.side == TurnSide::PC && turn.entity_name == **pc {
                 Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(Color::White)
@@ -96,8 +96,8 @@ pub fn render_all_entities(state: &CombatState) -> Paragraph<'static> {
     let npc_vec: Vec<&String> = all_npcs.iter().collect();
     for npc in &npc_vec {
         entity_index += 1;
-        let style = if let Some((TurnSide::NPC, name)) = current_turn {
-            if name == *npc {
+        let style = if let Some(turn) = current_turn {
+            if turn.side == TurnSide::NPC && turn.entity_name == **npc {
                 Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(Color::White)
@@ -145,8 +145,8 @@ pub fn render_all_entities_for_target(state: &CombatState) -> Paragraph<'static>
     let pc_vec: Vec<&String> = all_pcs.iter().collect();
     for pc in &pc_vec {
         entity_index += 1;
-        let style = if let Some((TurnSide::PC, name)) = current_turn {
-            if name == *pc {
+        let style = if let Some(turn) = current_turn {
+            if turn.side == TurnSide::PC && turn.entity_name == **pc {
                 Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(Color::White)
@@ -172,8 +172,8 @@ pub fn render_all_entities_for_target(state: &CombatState) -> Paragraph<'static>
     let npc_vec: Vec<&String> = all_npcs.iter().collect();
     for npc in &npc_vec {
         entity_index += 1;
-        let style = if let Some((TurnSide::NPC, name)) = current_turn {
-            if name == *npc {
+        let style = if let Some(turn) = current_turn {
+            if turn.side == TurnSide::NPC && turn.entity_name == **npc {
                 Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(Color::White)

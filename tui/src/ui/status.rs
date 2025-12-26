@@ -3,10 +3,10 @@ use ratatui::{
     text::Line,
     widgets::{Block, Borders, Paragraph, Wrap},
 };
-use crate::app::{App, TextInputType};
+use crate::app::{App, InputMode, TextInputType};
 
 pub fn render_status_widget<'a>(app: &'a App) -> Paragraph<'a> {
-    if let Some(ref text_input) = app.text_input {
+    if let InputMode::TextInput(ref text_input) = app.input_mode {
         let prompt = match text_input.input_type {
             TextInputType::NPCName => "NPC Name: ",
             TextInputType::PCName => "PC Name: ",

@@ -40,19 +40,17 @@ pub struct App {
     pub log: Vec<String>,
     pub log_view_expanded: bool,
     pub input_mode: InputMode,
-    pub text_input: Option<TextInput>,
-    pub selected_ability: Option<String>, // Ability name selected for use
 }
 
 pub enum InputMode {
     CreatingCombat,
     TakingTurn,
-    TextInput,
+    TextInput(TextInput),
     RemovingEntity,
     SelectingHeroDefinition,
     SelectingMonsterDefinition,
     SelectingAbility,
-    SelectingTarget,
+    SelectingTarget { ability_name: String },
 }
 
 #[derive(Copy, Clone)]
@@ -105,8 +103,6 @@ impl App {
             log: vec!["Welcome! Press 'n' to start combat, or 'q' to quit.".to_string()],
             log_view_expanded: false,
             input_mode: InputMode::CreatingCombat,
-            text_input: None,
-            selected_ability: None,
         };
         
         Ok(app)

@@ -75,7 +75,7 @@ pub fn handle_creation_input(app: &mut App, key: KeyCode) -> bool {
 }
 
 pub fn handle_text_input(app: &mut App, key: KeyCode) -> bool {
-    if let Some(ref mut text_input) = app.text_input {
+    if let InputMode::TextInput(ref mut text_input) = app.input_mode {
         match key {
             KeyCode::Enter => {
                 // Submit the name
@@ -84,7 +84,6 @@ pub fn handle_text_input(app: &mut App, key: KeyCode) -> bool {
                 
                 if name.is_empty() {
                     // Cancel input if empty or only whitespace
-                    app.text_input = None;
                     // Return to appropriate mode based on current state
                     app.input_mode = match app.state {
                         Some(CombatMode::Setup(_)) => InputMode::CreatingCombat,
@@ -165,13 +164,9 @@ pub fn handle_text_input(app: &mut App, key: KeyCode) -> bool {
                         app.input_mode = InputMode::CreatingCombat;
                     }
                 }
-                
-                // Exit text input mode
-                app.text_input = None;
             }
             KeyCode::Esc => {
                 // Cancel text input
-                app.text_input = None;
                 // Return to appropriate mode based on current state
                 app.input_mode = match app.state {
                     Some(CombatMode::Setup(_)) => InputMode::CreatingCombat,
@@ -242,7 +237,10 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
                 match state.end_turn() {
                     Ok(new_state) => {
                         app.state = Some(CombatMode::Active(new_state));
-                        app.selected_ability = None; // Clear selected ability
+                        // Clear any ability selection state
+                        if let InputMode::SelectingTarget { .. } = app.input_mode {
+                            app.input_mode = InputMode::TakingTurn;
+                        }
                         app.log("Turn ended".to_string());
                     }
                     Err(e) => {
@@ -254,8 +252,8 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
         KeyCode::Char('a') => {
             // Enter ability selection mode
             if let Some(CombatMode::Active(ref state)) = app.state {
-                if let Some((_side, entity_name)) = state.current_turn() {
-                    if let Some(entity) = app.entities.get(entity_name) {
+                if let Some(turn) = state.current_turn() {
+                    if let Some(entity) = app.entities.get(&turn.entity_name) {
                         let ability_names = &entity.definition().abilities;
                         if ability_names.is_empty() {
                             app.log("No abilities available for this entity.".to_string());
@@ -470,8 +468,7 @@ pub fn handle_monster_selection(app: &mut App, key: KeyCode) -> bool {
                     let default_name = generate_default_entity_name(&definition_name, instance_count);
                     
                     // Enter text input mode with pre-filled name
-                    app.input_mode = InputMode::TextInput;
-                    app.text_input = Some(TextInput {
+                    app.input_mode = InputMode::TextInput(TextInput {
                         buffer: default_name.clone(),
                         input_type: TextInputType::NPCName,
                         selected_definition: Some(definition_name),
@@ -511,8 +508,7 @@ pub fn handle_hero_selection(app: &mut App, key: KeyCode) -> bool {
                     let default_name = generate_default_entity_name(&definition_name, instance_count);
                     
                     // Enter text input mode with pre-filled name
-                    app.input_mode = InputMode::TextInput;
-                    app.text_input = Some(TextInput {
+                    app.input_mode = InputMode::TextInput(TextInput {
                         buffer: default_name.clone(),
                         input_type: TextInputType::PCName,
                         selected_definition: Some(definition_name),
@@ -534,15 +530,14 @@ pub fn handle_ability_selection(app: &mut App, key: KeyCode) -> bool {
         KeyCode::Char('x') => {
             // Cancel ability selection - return to turn mode
             app.input_mode = InputMode::TakingTurn;
-            app.selected_ability = None;
             app.log("Ability selection cancelled".to_string());
         }
         KeyCode::Char(c) => {
             // Check if it's a digit (1-9)
             if let Some(digit) = c.to_digit(10) {
                 if let Some(CombatMode::Active(ref state)) = app.state {
-                    if let Some((_side, entity_name)) = state.current_turn() {
-                        if let Some(entity) = app.entities.get(entity_name) {
+                    if let Some(turn) = state.current_turn() {
+                        if let Some(entity) = app.entities.get(&turn.entity_name) {
                             let ability_names: Vec<&String> = entity.definition().abilities.iter().collect();
                             let index = (digit as usize).saturating_sub(1); // Convert 1-9 to 0-8
                             
@@ -550,8 +545,7 @@ pub fn handle_ability_selection(app: &mut App, key: KeyCode) -> bool {
                                 let ability_name = ability_names[index].clone();
                                 // Verify ability exists
                                 if app.definitions.abilities.contains_key(&ability_name) {
-                                    app.selected_ability = Some(ability_name.clone());
-                                    app.input_mode = InputMode::SelectingTarget;
+                                    app.input_mode = InputMode::SelectingTarget { ability_name: ability_name.clone() };
                                     app.log(format!("Selected ability: {}. Select target (press number, or 'x' to cancel):", ability_name));
                                 } else {
                                     app.log(format!("Ability '{}' not found in definitions", ability_name));
@@ -598,10 +592,15 @@ pub fn handle_target_selection(app: &mut App, key: KeyCode) -> bool {
                     if index < all_entities.len() {
                         let target_name = all_entities[index].clone();
                         
+                        // Extract ability name before borrowing app mutably
+                        let ability_name = if let InputMode::SelectingTarget { ability_name } = &app.input_mode {
+                            ability_name.clone()
+                        } else {
+                            return false;
+                        };
+                        
                         // Execute ability (stub)
-                        if let Some(ability_name) = app.selected_ability.clone() {
-                            execute_ability(app, &ability_name, &target_name);
-                        }
+                        execute_ability(app, &ability_name, &target_name);
                     } else {
                         app.log(format!("No entity at position {}", digit));
                     }
@@ -617,8 +616,19 @@ fn execute_ability(app: &mut App, ability_name: &str, target_name: &str) {
     // Stub: Just log the execution
     app.log(format!("Executing ability '{}' on target '{}' (stub)", ability_name, target_name));
     
+    // Mark turn as committed (cannot be cancelled after this)
+    if let Some(CombatMode::Active(ref state)) = app.state {
+        match state.commit_turn() {
+            Ok(new_state) => {
+                app.state = Some(CombatMode::Active(new_state));
+            }
+            Err(e) => {
+                app.log(format!("Warning: Could not commit turn: {}", e));
+            }
+        }
+    }
+    
     // After execution, return to turn mode
     app.input_mode = InputMode::TakingTurn;
-    app.selected_ability = None;
     app.log("Ability executed. Press 'e' to end turn, or 'a' to use another ability.".to_string());
 }

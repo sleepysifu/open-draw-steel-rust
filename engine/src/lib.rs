@@ -4,7 +4,7 @@ pub mod dice;
 pub mod entity;
 pub mod ability;
 
-pub use combat::{CombatParameters, CombatState, TurnSide};
+pub use combat::{CombatParameters, CombatState, CurrentTurn, TurnSide};
 pub use dice::{rolld3s, rolld10s, power_roll};
 pub use entity::{Entity, EntityDefinition};
 pub use ability::{Ability, PowerRoll};

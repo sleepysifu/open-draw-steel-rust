@@ -7,6 +7,12 @@ pub enum TurnSide {
     NPC,
 }
 
+#[derive(Debug, Clone)]
+pub struct CurrentTurn {
+    pub side: TurnSide,
+    pub entity_name: String,
+    pub committed: bool, // True if an ability has been executed (prevents cancellation)
+}
 
 /**
  * Parameters for a combat. These cannot mutate once the combat is started.
@@ -67,7 +73,7 @@ impl CombatParameters {
 pub struct CombatState {
     starting_parameters:CombatParameters,
     current_side: TurnSide,
-    current_turn: Option<(TurnSide, String)>, // The entity currently taking their turn
+    current_turn: Option<CurrentTurn>, // The entity currently taking their turn
     pc_taken_turns: HashSet<String>,
     npc_taken_turns: HashSet<String>,
     round:i16,
@@ -109,8 +115,24 @@ impl CombatState {
         &self.npc_taken_turns
     }
 
-    pub fn current_turn(&self) -> Option<&(TurnSide, String)> {
+    pub fn current_turn(&self) -> Option<&CurrentTurn> {
         self.current_turn.as_ref()
+    }
+    
+    /// Check if the current turn is committed (cannot be cancelled)
+    pub fn is_turn_committed(&self) -> bool {
+        self.current_turn.as_ref().map(|t| t.committed).unwrap_or(false)
+    }
+    
+    /// Mark the current turn as committed
+    pub fn commit_turn(&self) -> Result<Self, String> {
+        let mut new_state = self.clone();
+        if let Some(ref mut turn) = new_state.current_turn {
+            turn.committed = true;
+            Ok(new_state)
+        } else {
+            Err("No turn in progress to commit.".to_string())
+        }
     }
 
     pub fn available(&self) -> IndexSet<String> {
@@ -125,8 +147,10 @@ impl CombatState {
                     .collect();
                 
                 // Remove the entity currently taking their turn
-                if let Some((TurnSide::PC, ref name)) = self.current_turn {
-                    available.shift_remove(name);
+                if let Some(ref turn) = self.current_turn {
+                    if turn.side == TurnSide::PC {
+                        available.shift_remove(&turn.entity_name);
+                    }
                 }
                 
                 available
@@ -141,8 +165,10 @@ impl CombatState {
                     .collect();
                 
                 // Remove the entity currently taking their turn
-                if let Some((TurnSide::NPC, ref name)) = self.current_turn {
-                    available.shift_remove(name);
+                if let Some(ref turn) = self.current_turn {
+                    if turn.side == TurnSide::NPC {
+                        available.shift_remove(&turn.entity_name);
+                    }
                 }
                 
                 available
@@ -179,7 +205,11 @@ impl CombatState {
         Ok(Self {
             starting_parameters: self.starting_parameters.clone(),
             current_side: self.current_side,
-            current_turn: Some((side, entity_name)),
+            current_turn: Some(CurrentTurn {
+                side,
+                entity_name,
+                committed: false,
+            }),
             pc_taken_turns: self.pc_taken_turns.clone(),
             npc_taken_turns: self.npc_taken_turns.clone(),
             round: self.round,
@@ -187,9 +217,13 @@ impl CombatState {
     }
 
     pub fn cancel_turn(&self) -> Result<Self, String> {
-
         if self.current_turn.is_none() {
             return Err("No turn in progress to cancel.".to_string());
+        }
+        
+        // Check if turn is committed
+        if self.is_turn_committed() {
+            return Err("Cannot cancel turn after using an ability.".to_string());
         }
 
         Ok(Self {
@@ -205,7 +239,7 @@ impl CombatState {
     pub fn end_turn(&self) -> Result<Self, String> {
         // 1. Check if there's a turn in progress
         let (side, entity_name) = match &self.current_turn {
-            Some(turn) => turn.clone(),
+            Some(turn) => (turn.side, turn.entity_name.clone()),
             None => return Err("No turn in progress to end.".to_string()),
         };
         
@@ -290,8 +324,8 @@ impl CombatState {
         }
 
         // Check if a turn is in progress for this entity (shouldn't happen, but be safe)
-        if let Some((TurnSide::PC, ref name)) = self.current_turn {
-            if name == &pc {
+        if let Some(ref turn) = self.current_turn {
+            if turn.side == TurnSide::PC && turn.entity_name == pc {
                 return Err("Cannot add PC that is currently taking a turn".to_string());
             }
         }
@@ -316,8 +350,8 @@ impl CombatState {
         }
 
         // Check if a turn is in progress for this entity (shouldn't happen, but be safe)
-        if let Some((TurnSide::NPC, ref name)) = self.current_turn {
-            if name == &npc {
+        if let Some(ref turn) = self.current_turn {
+            if turn.side == TurnSide::NPC && turn.entity_name == npc {
                 return Err("Cannot add NPC that is currently taking a turn".to_string());
             }
         }
@@ -342,8 +376,8 @@ impl CombatState {
         }
 
         // Check if PC is currently taking a turn
-        if let Some((TurnSide::PC, ref name)) = self.current_turn {
-            if name == pc {
+        if let Some(turn) = &self.current_turn {
+            if turn.side == TurnSide::PC && turn.entity_name == *pc {
                 return Err("Cannot remove PC that is currently taking a turn. End or cancel the turn first.".to_string());
             }
         }
@@ -372,8 +406,8 @@ impl CombatState {
         }
 
         // Check if NPC is currently taking a turn
-        if let Some((TurnSide::NPC, ref name)) = self.current_turn {
-            if name == npc {
+        if let Some(ref turn) = self.current_turn {
+            if turn.side == TurnSide::NPC && turn.entity_name == *npc {
                 return Err("Cannot remove NPC that is currently taking a turn. End or cancel the turn first.".to_string());
             }
         }

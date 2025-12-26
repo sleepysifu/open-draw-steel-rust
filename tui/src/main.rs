@@ -69,7 +69,7 @@ fn run(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<(), String> 
                     InputMode::TakingTurn => {
                         should_quit = handle_turn_input(&mut app, key.code);
                     }
-                    InputMode::TextInput => {
+                    InputMode::TextInput(_) => {
                         should_quit = handle_text_input(&mut app, key.code);
                     }
                     InputMode::RemovingEntity => {
@@ -84,7 +84,7 @@ fn run(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<(), String> 
                     InputMode::SelectingAbility => {
                         should_quit = handle_ability_selection(&mut app, key.code);
                     }
-                    InputMode::SelectingTarget => {
+                    InputMode::SelectingTarget { .. } => {
                         should_quit = handle_target_selection(&mut app, key.code);
                     }
                 }
