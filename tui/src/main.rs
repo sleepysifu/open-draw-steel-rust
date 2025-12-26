@@ -2,7 +2,7 @@ mod app;
 mod handlers;
 mod ui;
 
-use std::io::{self, stdout};
+use std::{io::{self, Stdout, stdout}};
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyEventKind},
     execute,
@@ -23,19 +23,38 @@ fn main() -> io::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
+    match run(&mut terminal) {
+        Ok(()) => (),
+        Err(e) => {
+            eprintln!("Error: {}", e);
+        }
+    }
+
+    // Restore terminal
+    disable_raw_mode()?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
+    terminal.show_cursor()?;
+
+    Ok(())
+}
+
+fn run(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<(), String> {
     let mut app = match App::new() {
         Ok(app) => app,
         Err(e) => {
-            eprintln!("Error creating app: {}", e);
-            return Err(io::Error::new(io::ErrorKind::Other, e));
+            return Err(e);
         }
     };
     let mut should_quit = false;
 
     while !should_quit {
-        terminal.draw(|f| ui::render_ui(f, &app))?;
+        terminal.draw(|f| ui::render_ui(f, &app)).map_err(|e| e.to_string())?;
 
-        if let Event::Key(key) = event::read()? {
+        if let Event::Key(key) = event::read().map_err(|e| e.to_string())? {
             if key.kind == KeyEventKind::Press {
                 // Handle log view toggle (works in any mode)
                 if let crossterm::event::KeyCode::Char('`') = key.code {
@@ -66,15 +85,5 @@ fn main() -> io::Result<()> {
             }
         }
     }
-
-    // Restore terminal
-    disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
-    terminal.show_cursor()?;
-
     Ok(())
 }

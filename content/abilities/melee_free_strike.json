@@ -1,0 +1,12 @@
+{
+    "name": "Melee Free Strike",
+    "power_roll_1": {
+        "damage":1
+    },
+    "power_roll_2": {
+        "damage":2
+    },
+    "power_roll_3": {
+        "damage":3
+    }
+}

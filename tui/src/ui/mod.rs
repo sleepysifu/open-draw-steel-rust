@@ -63,7 +63,7 @@ pub fn render_ui(f: &mut Frame, app: &App) {
         (Some(CombatMode::Active(state)), _) => {
             // If a turn is in progress, show abilities; otherwise show available entities
             if state.current_turn().is_some() {
-                abilities::render_abilities(state)
+                abilities::render_abilities(state, &app)
             } else {
                 entities::render_available_entities(state)
             }

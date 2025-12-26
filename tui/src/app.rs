@@ -1,16 +1,40 @@
-use std::fs;
 use std::path::Path;
 use indexmap::{IndexMap};
-use odsr_engine::{CombatParameters, CombatState, TurnSide, entity::{Entity, EntityDefinition}};
+use odsr_engine::{Ability, CombatParameters, CombatState, TurnSide, entity::{Entity, EntityDefinition}, fs::load_set};
 
 pub enum CombatMode {
     Setup(CombatParameters),
     Active(CombatState),
 }
 
+pub struct Definitions {
+    pub monsters: IndexMap<String, EntityDefinition>,
+    pub heroes: IndexMap<String, EntityDefinition>,
+    pub abilities: IndexMap<String, Ability>,
+}
+
+impl Definitions {
+    pub fn new() -> Result<Self, String> {
+        
+        let monster_definitions = match load_set::<EntityDefinition>(Path::new("content/monsters")) {
+            Ok(definitions) => definitions,
+            Err(e) => return Err(e),
+        };
+        let hero_definitions = match load_set::<EntityDefinition>(Path::new("content/heroes")) {
+            Ok(definitions) => definitions,
+            Err(e) => return Err(e),
+        };
+        let abilities = match load_set::<Ability>(Path::new("content/abilities")) {
+            Ok(abilities) => abilities,
+            Err(e) => return Err(e),
+        };
+        Ok(Self { monsters: monster_definitions, heroes: hero_definitions, abilities: abilities })
+    
+    }
+}
+
 pub struct App {
-    pub monster_definitions: IndexMap<String, EntityDefinition>,
-    pub hero_definitions: IndexMap<String, EntityDefinition>,
+    pub definitions: Definitions,
     pub entities: IndexMap<String, Entity>,
     pub state: Option<CombatMode>,
     pub log: Vec<String>,
@@ -37,48 +61,9 @@ pub enum TextInputType {
 pub struct TextInput {
     pub buffer: String,
     pub input_type: TextInputType,
-    pub selected_definition: Option<String>, // For NPCs: the monster definition name
+    pub selected_definition: Option<String>,
 }
 
-/// Load entity definitions from the content/monsters/ directory
-fn load_entity_definitions(dir: &Path) -> Result<IndexMap<String, EntityDefinition>, String> {
-    if !dir.exists() {
-        return Err(format!("Directory {} does not exist", dir.display()));
-    }
-    
-    let entries = match fs::read_dir(dir) {
-        Ok(entries) => entries,
-        Err(_) => return Err(format!("Failed to read directory {}", dir.display())),
-    };
-
-    let mut definitions = IndexMap::new();
-    
-    for entry in entries {
-        let entry = match entry {
-            Ok(e) => e,
-            Err(_) => continue,
-        };
-        
-        let path = entry.path();
-        if path.extension().and_then(|s| s.to_str()) != Some("json") {
-            return Err(format!("File {} is not a JSON file", path.display()));
-        }
-        
-        let content = match fs::read_to_string(&path) {
-            Ok(c) => c,
-            Err(_) => return Err(format!("Failed to read file {}", path.display())),
-        };
-        
-        let definition: EntityDefinition = match serde_json::from_str(&content) {
-            Ok(d) => d,
-            Err(_) => return Err(format!("Failed to parse file {}", path.display())),
-        };
-        
-        definitions.insert(definition.name.clone(), definition);
-    }
-    
-    Ok(definitions)
-}
 
 impl App {
     /// Append a message to the log buffer
@@ -105,18 +90,13 @@ impl App {
             TurnSide::PC,
         );
         
-        let monster_definitions = match load_entity_definitions(Path::new("content/monsters")) {
-            Ok(definitions) => definitions,
-            Err(e) => return Err(e),
-        };
-        let hero_definitions = match load_entity_definitions(Path::new("content/heroes")) {
+        let definitions = match Definitions::new() {
             Ok(definitions) => definitions,
             Err(e) => return Err(e),
         };
         
         let app = App {
-            monster_definitions,
-            hero_definitions,
+            definitions: definitions,
             entities: IndexMap::new(),
             state: Some(CombatMode::Setup(combat_params)),
             log: vec!["Welcome! Press 'n' to start combat, or 'q' to quit.".to_string()],

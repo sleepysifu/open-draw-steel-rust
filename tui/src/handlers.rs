@@ -22,11 +22,11 @@ fn generate_default_entity_name(definition_name: &String, instance_count: usize)
 fn ensure_entity_exists(app: &mut App, instance_name: &String, definition_name: &String, is_hero: bool) {
     // Get the definition from the appropriate map
     let definition = if is_hero {
-        app.hero_definitions.get(definition_name)
+        app.definitions.heroes.get(definition_name)
             .expect("Hero definition must exist")
             .clone()
     } else {
-        app.monster_definitions.get(definition_name)
+        app.definitions.monsters.get(definition_name)
             .expect("Monster definition must exist")
             .clone()
     };
@@ -46,7 +46,7 @@ pub fn handle_creation_input(app: &mut App, key: KeyCode) -> bool {
         }
         KeyCode::Char('b') => {
             // Enter monster definition selection mode for NPC
-            if app.monster_definitions.is_empty() {
+            if app.definitions.monsters.is_empty() {
                 app.log("No monster definitions available. Add some to content/monsters/ first.".to_string());
             } else {
                 app.input_mode = InputMode::SelectingMonsterDefinition;
@@ -55,7 +55,7 @@ pub fn handle_creation_input(app: &mut App, key: KeyCode) -> bool {
         }
         KeyCode::Char('p') => {
             // Enter hero definition selection mode for PC
-            if app.hero_definitions.is_empty() {
+            if app.definitions.heroes.is_empty() {
                 app.log("No hero definitions available. Add some to content/heroes/ first.".to_string());
             } else {
                 app.input_mode = InputMode::SelectingHeroDefinition;
@@ -198,7 +198,7 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
         KeyCode::Char('b') => {
             // Enter monster definition selection mode for NPC (during combat)
             if let Some(CombatMode::Active(_)) = app.state {
-                if app.monster_definitions.is_empty() {
+                if app.definitions.monsters.is_empty() {
                     app.log("No monster definitions available. Add some to content/monsters/ first.".to_string());
                 } else {
                     app.input_mode = InputMode::SelectingMonsterDefinition;
@@ -209,7 +209,7 @@ pub fn handle_turn_input(app: &mut App, key: KeyCode) -> bool {
             KeyCode::Char('p') => {
             // Enter hero definition selection mode for PC (during combat)
             if let Some(CombatMode::Active(_)) = app.state {
-                if app.hero_definitions.is_empty() {
+                if app.definitions.heroes.is_empty() {
                     app.log("No hero definitions available. Add some to content/heroes/ first.".to_string());
                 } else {
                     app.input_mode = InputMode::SelectingHeroDefinition;
@@ -444,7 +444,7 @@ pub fn handle_monster_selection(app: &mut App, key: KeyCode) -> bool {
         KeyCode::Char(c) => {
             // Check if it's a digit (1-9)
             if let Some(digit) = c.to_digit(10) {
-                let definitions: Vec<&String> = app.monster_definitions.keys().collect();
+                let definitions: Vec<&String> = app.definitions.monsters.keys().collect();
                 let index = (digit as usize).saturating_sub(1); // Convert 1-9 to 0-8
                 
                 if index < definitions.len() {
@@ -485,7 +485,7 @@ pub fn handle_hero_selection(app: &mut App, key: KeyCode) -> bool {
         KeyCode::Char(c) => {
             // Check if it's a digit (1-9)
             if let Some(digit) = c.to_digit(10) {
-                let definitions: Vec<&String> = app.hero_definitions.keys().collect();
+                let definitions: Vec<&String> = app.definitions.heroes.keys().collect();
                 let index = (digit as usize).saturating_sub(1); // Convert 1-9 to 0-8
                 
                 if index < definitions.len() {

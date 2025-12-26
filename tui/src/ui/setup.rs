@@ -90,16 +90,16 @@ pub fn render_monster_definitions(app: &App) -> Paragraph<'static> {
     
     items.push(Line::from(""));
     
-    if app.monster_definitions.is_empty() {
+    if app.definitions.monsters.is_empty() {
         items.push(Line::from(Span::styled(
             "No monster definitions available",
             Style::default().fg(Color::Red),
         )));
     } else {
-        let definitions: Vec<&String> = app.monster_definitions.keys().collect();
+        let definitions: Vec<&String> = app.definitions.monsters.keys().collect();
         for (idx, def_name) in definitions.iter().enumerate() {
             let number = idx + 1; // Display 1-based numbers
-            let definition = app.monster_definitions.get(*def_name).unwrap();
+            let definition = app.definitions.monsters.get(*def_name).unwrap();
             items.push(Line::from(vec![
                 Span::styled(
                     format!("[{}] ", number),
@@ -132,16 +132,16 @@ pub fn render_hero_definitions(app: &App) -> Paragraph<'static> {
     
     items.push(Line::from(""));
     
-    if app.hero_definitions.is_empty() {
+    if app.definitions.heroes.is_empty() {
         items.push(Line::from(Span::styled(
             "No hero definitions available",
             Style::default().fg(Color::Red),
         )));
     } else {
-        let definitions: Vec<&String> = app.hero_definitions.keys().collect();
+        let definitions: Vec<&String> = app.definitions.heroes.keys().collect();
         for (idx, def_name) in definitions.iter().enumerate() {
             let number = idx + 1; // Display 1-based numbers
-            let definition = app.hero_definitions.get(*def_name).unwrap();
+            let definition = app.definitions.heroes.get(*def_name).unwrap();
             items.push(Line::from(vec![
                 Span::styled(
                     format!("[{}] ", number),

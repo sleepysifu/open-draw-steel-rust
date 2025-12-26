@@ -1,31 +1,30 @@
+pub mod fs;
 pub mod combat;
 pub mod dice;
-pub mod npc;
-pub mod pc;
 pub mod entity;
+pub mod ability;
 
 pub use combat::{CombatParameters, CombatState, TurnSide};
 pub use dice::{rolld3s, rolld10s, power_roll};
-pub use npc::NPC;
-pub use pc::PC;
 pub use entity::{Entity, EntityDefinition};
+pub use ability::{Ability, PowerRoll};
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
-    use crate::{combat::{CombatParameters, CombatState, TurnSide}, dice::rolld10s, npc::NPC, pc::PC};
+    
+    use crate::{EntityDefinition, combat::{CombatParameters, CombatState, TurnSide}, dice::rolld10s};
 
     #[test]
     fn test_combat_flow() {
-        let mut pcs: HashSet<PC> = HashSet::new();
-        pcs.insert(PC::new("PC1".to_string()));
-        pcs.insert(PC::new("PC2".to_string()));
-        pcs.insert(PC::new("PC3".to_string()));
+        let mut pcs: Vec<EntityDefinition> = Vec::new();
+        pcs.push(EntityDefinition { name: "PC1".to_string(), max_stamina: 10, abilities: vec![] });
+        pcs.push(EntityDefinition { name: "PC2".to_string(), max_stamina: 10, abilities: vec![] });
+        pcs.push(EntityDefinition { name: "PC3".to_string(), max_stamina: 10, abilities: vec![] });
     
-        let mut npcs: HashSet<NPC> = HashSet::new();
-        npcs.insert(NPC::new("NPC1".to_string()));
-        npcs.insert(NPC::new("NPC2".to_string()));
-        npcs.insert(NPC::new("NPC3".to_string()));
+        let mut npcs: Vec<EntityDefinition> = Vec::new();
+        npcs.push(EntityDefinition { name: "NPC1".to_string(), max_stamina: 10, abilities: vec![] });
+        npcs.push(EntityDefinition { name: "NPC2".to_string(), max_stamina: 10, abilities: vec![] });
+        npcs.push(EntityDefinition { name: "NPC3".to_string(), max_stamina: 10, abilities: vec![] });
     
         let starting_roll:i32 = rolld10s(1).iter().sum();
         let starting_side = if starting_roll > 5 {
@@ -35,8 +34,8 @@ mod tests {
         };
     
         let combat_parameters = CombatParameters::new(
-            pcs.iter().map(|pc| pc.name().clone()),
-            npcs.iter().map(|npc| npc.name().clone()),
+            pcs.iter().map(|pc| pc.name.clone()),
+            npcs.iter().map(|npc| npc.name.clone()),
             starting_side,
         );
         

@@ -4,6 +4,8 @@ use serde::Deserialize;
 pub struct EntityDefinition {
     pub name: String,
     pub max_stamina: i32,
+    #[serde(rename = "abilities")]
+    pub abilities: Vec<String>,
 }
 
 
